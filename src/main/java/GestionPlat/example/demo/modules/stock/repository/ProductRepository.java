@@ -13,8 +13,12 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Optional<Product> findByReference(String reference);
     Boolean existsByReference(String reference);
 
+    Boolean existsByBarcode(String barcode);
+    Boolean existsByBarcodeAndIdNot(String barcode, Long id);
+
     @Query("SELECT p FROM Product p WHERE p.stock <= p.alertThreshold")
     List<Product> findCriticalStockProducts();
 
     List<Product> findByCategoryId(Long categoryId);
+    long countByCategoryId(Long categoryId);
 }

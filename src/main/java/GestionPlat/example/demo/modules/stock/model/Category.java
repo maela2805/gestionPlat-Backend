@@ -1,6 +1,8 @@
 package GestionPlat.example.demo.modules.stock.model;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -29,11 +31,16 @@ public class Category {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
-    @JsonIgnoreProperties({"children", "parent"})
+    @JsonProperty("parentCategory")
+    @JsonAlias("parent")
+    @JsonIgnoreProperties({ "children", "parent" })
     private Category parent;
 
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
-    @JsonIgnoreProperties({"parent"})
+    @JsonIgnoreProperties({ "parent" })
     @Builder.Default
     private List<Category> children = new ArrayList<>();
+
+    @Transient
+    private Integer productCount;
 }

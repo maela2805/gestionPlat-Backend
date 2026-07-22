@@ -43,31 +43,52 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public Product createProduct(ProductRequest request, String userEmail) {
-        if (productRepository.existsByReference(request.getReference())) {
-            throw new RuntimeException("Un produit avec la référence " + request.getReference() + " existe déjà !");
+        String reference = request.getReference();
+        if (reference == null || reference.isBlank()) {
+            long count = productRepository.count() + 1;
+            reference = String.format("PROD-%05d", count);
+        }
+
+        if (productRepository.existsByReference(reference)) {
+            long count = productRepository.count() + 1;
+            reference = String.format("PROD-%05d", count);
+            if (productRepository.existsByReference(reference)) {
+                reference = "PROD-" + System.currentTimeMillis() % 100000;
+            }
+        }
+
+        if (request.getBarcode() != null && !request.getBarcode().isBlank()) {
+            String trimmedBarcode = request.getBarcode().trim();
+            if (productRepository.existsByBarcode(trimmedBarcode)) {
+                throw new RuntimeException(
+                        "Le code-barres '" + trimmedBarcode + "' est déjà attribué à un autre produit !");
+            }
         }
 
         if (request.getSellPrice().compareTo(request.getBuyPrice()) < 0) {
-            throw new RuntimeException("Règle de gestion : Le prix de vente doit être supérieur ou égal au prix d'achat.");
+            throw new RuntimeException(
+                    "Règle de gestion : Le prix de vente doit être supérieur ou égal au prix d'achat.");
         }
 
         Category category = null;
         if (request.getCategoryId() != null) {
-            category = categoryRepository.findById(request.getCategoryId())
-                    .orElseThrow(() -> new RuntimeException("Catégorie non trouvée avec l'id: " + request.getCategoryId()));
+            Category selectedCategory = categoryRepository.findById(request.getCategoryId())
+                    .orElseThrow(
+                            () -> new RuntimeException("Catégorie non trouvée avec l'id: " + request.getCategoryId()));
+            category = resolveEffectiveCategory(selectedCategory);
         }
 
         int initialStock = request.getInitialStock() != null ? request.getInitialStock() : 0;
 
         Product product = Product.builder()
-                .reference(request.getReference())
+                .reference(reference)
                 .name(request.getName())
                 .description(request.getDescription())
                 .buyPrice(request.getBuyPrice())
                 .sellPrice(request.getSellPrice())
                 .stock(initialStock)
                 .alertThreshold(request.getAlertThreshold() != null ? request.getAlertThreshold() : 5)
-                .barcode(request.getBarcode())
+                .barcode(request.getBarcode() != null ? request.getBarcode().trim() : null)
                 .imageUrl(request.getImageUrl())
                 .category(category)
                 .build();
@@ -94,25 +115,49 @@ public class ProductServiceImpl implements ProductService {
     public Product updateProduct(Long id, ProductRequest request) {
         Product product = getProductById(id);
 
+        if (request.getBarcode() != null && !request.getBarcode().isBlank()) {
+            String trimmedBarcode = request.getBarcode().trim();
+            if (productRepository.existsByBarcodeAndIdNot(trimmedBarcode, id)) {
+                throw new RuntimeException(
+                        "Le code-barres '" + trimmedBarcode + "' est déjà attribué à un autre produit !");
+            }
+        }
+
         if (request.getSellPrice().compareTo(request.getBuyPrice()) < 0) {
-            throw new RuntimeException("Règle de gestion : Le prix de vente doit être supérieur ou égal au prix d'achat.");
+            throw new RuntimeException(
+                    "Règle de gestion : Le prix de vente doit être supérieur ou égal au prix d'achat.");
         }
 
         if (request.getCategoryId() != null) {
-            Category category = categoryRepository.findById(request.getCategoryId())
+            Category selectedCategory = categoryRepository.findById(request.getCategoryId())
                     .orElseThrow(() -> new RuntimeException("Catégorie non trouvée"));
-            product.setCategory(category);
+            product.setCategory(resolveEffectiveCategory(selectedCategory));
         }
 
         product.setName(request.getName());
         product.setDescription(request.getDescription());
         product.setBuyPrice(request.getBuyPrice());
         product.setSellPrice(request.getSellPrice());
-        if (request.getAlertThreshold() != null) product.setAlertThreshold(request.getAlertThreshold());
-        if (request.getBarcode() != null) product.setBarcode(request.getBarcode());
-        if (request.getImageUrl() != null) product.setImageUrl(request.getImageUrl());
+        if (request.getAlertThreshold() != null)
+            product.setAlertThreshold(request.getAlertThreshold());
+        if (request.getBarcode() != null)
+            product.setBarcode(request.getBarcode().trim());
+        if (request.getImageUrl() != null)
+            product.setImageUrl(request.getImageUrl());
 
         return productRepository.save(product);
+    }
+
+    Category resolveEffectiveCategory(Category category) {
+        if (category == null) {
+            return null;
+        }
+
+        Category current = category;
+        while (current.getParent() != null) {
+            current = current.getParent();
+        }
+        return current;
     }
 
     @Override
@@ -122,7 +167,8 @@ public class ProductServiceImpl implements ProductService {
         List<StockMovement> movements = stockMovementRepository.findByProductIdOrderByCreatedAtDesc(id);
 
         if (!movements.isEmpty()) {
-            throw new RuntimeException("Règle de gestion : Impossible de supprimer un produit ayant un historique de mouvements de stock.");
+            throw new RuntimeException(
+                    "Règle de gestion : Impossible de supprimer un produit ayant un historique de mouvements de stock.");
         }
 
         productRepository.delete(product);

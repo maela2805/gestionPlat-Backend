@@ -45,7 +45,7 @@ public class ProductController {
 
     @Operation(summary = "Créer un nouveau produit (ADMIN/MANAGER)")
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'WRITE_STOCK')")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'WRITE_STOCK')")
     public ResponseEntity<Product> createProduct(@RequestBody ProductRequest request,
                                                  @AuthenticationPrincipal UserDetails userDetails) {
         String userEmail = userDetails != null ? userDetails.getUsername() : "system";
@@ -54,14 +54,14 @@ public class ProductController {
 
     @Operation(summary = "Mettre à jour un produit existant (ADMIN/MANAGER)")
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'WRITE_STOCK')")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'WRITE_STOCK')")
     public ResponseEntity<Product> updateProduct(@PathVariable Long id, @RequestBody ProductRequest request) {
         return ResponseEntity.ok(productService.updateProduct(id, request));
     }
 
     @Operation(summary = "Supprimer un produit (ADMIN uniquement)")
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'DELETE_STOCK')")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'DELETE_STOCK')")
     public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
         productService.deleteProduct(id);
         return ResponseEntity.noContent().build();
@@ -69,7 +69,7 @@ public class ProductController {
 
     @Operation(summary = "Ajuster la quantité en stock d'un produit (Entrée/Sortie)")
     @PostMapping("/adjust")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'WRITE_STOCK')")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'WRITE_STOCK')")
     public ResponseEntity<Product> adjustStock(@RequestBody StockAdjustmentRequest request,
                                                @AuthenticationPrincipal UserDetails userDetails) {
         String userEmail = userDetails != null ? userDetails.getUsername() : "system";
