@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class ProductServiceImplTest {
 
     @Test
-    void shouldResolveToParentCategoryWhenAChildCategoryIsSelected() {
+    void shouldRetainSelectedCategoryWhenAChildCategoryIsSelected() {
         ProductServiceImpl service = new ProductServiceImpl(null, null, null);
 
         Category parentCategory = Category.builder().id(1L).name("Boisson").build();
@@ -16,6 +16,6 @@ class ProductServiceImplTest {
 
         Category resolvedCategory = service.resolveEffectiveCategory(childCategory);
 
-        assertEquals(parentCategory, resolvedCategory);
+        assertEquals(childCategory, resolvedCategory);
     }
 }

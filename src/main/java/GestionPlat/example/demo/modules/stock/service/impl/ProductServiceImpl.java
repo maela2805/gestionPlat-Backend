@@ -72,10 +72,9 @@ public class ProductServiceImpl implements ProductService {
 
         Category category = null;
         if (request.getCategoryId() != null) {
-            Category selectedCategory = categoryRepository.findById(request.getCategoryId())
+            category = categoryRepository.findById(request.getCategoryId())
                     .orElseThrow(
                             () -> new RuntimeException("Catégorie non trouvée avec l'id: " + request.getCategoryId()));
-            category = resolveEffectiveCategory(selectedCategory);
         }
 
         int initialStock = request.getInitialStock() != null ? request.getInitialStock() : 0;
@@ -131,7 +130,7 @@ public class ProductServiceImpl implements ProductService {
         if (request.getCategoryId() != null) {
             Category selectedCategory = categoryRepository.findById(request.getCategoryId())
                     .orElseThrow(() -> new RuntimeException("Catégorie non trouvée"));
-            product.setCategory(resolveEffectiveCategory(selectedCategory));
+            product.setCategory(selectedCategory);
         }
 
         product.setName(request.getName());
@@ -149,15 +148,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     Category resolveEffectiveCategory(Category category) {
-        if (category == null) {
-            return null;
-        }
-
-        Category current = category;
-        while (current.getParent() != null) {
-            current = current.getParent();
-        }
-        return current;
+        return category;
     }
 
     @Override
