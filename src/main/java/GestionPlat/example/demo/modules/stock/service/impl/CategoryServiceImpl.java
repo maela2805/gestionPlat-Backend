@@ -1,5 +1,6 @@
 package GestionPlat.example.demo.modules.stock.service.impl;
 
+import GestionPlat.example.demo.modules.stock.dto.CategoryRequest;
 import GestionPlat.example.demo.modules.stock.model.Category;
 import GestionPlat.example.demo.modules.stock.repository.CategoryRepository;
 import GestionPlat.example.demo.modules.stock.repository.ProductRepository;
@@ -44,6 +45,36 @@ public class CategoryServiceImpl implements CategoryService {
         }
 
         return total;
+    }
+
+    @Override
+    public Category createCategory(CategoryRequest request) {
+        if (request.getName() == null || request.getName().isBlank()) {
+            throw new RuntimeException("Le nom de la catégorie est obligatoire.");
+        }
+
+        String name = request.getName().trim();
+        if (categoryRepository.existsByNameIgnoreCase(name)) {
+            throw new RuntimeException("La catégorie '" + name + "' existe déjà !");
+        }
+
+        Category.CategoryBuilder builder = Category.builder()
+                .name(name)
+                .description(request.getDescription());
+
+        Long parentId = request.getParentId();
+        if (parentId == null && request.getParentCategory() != null) {
+            parentId = request.getParentCategory().getId();
+        }
+
+        if (parentId != null) {
+            final Long finalParentId = parentId;
+            Category parent = categoryRepository.findById(finalParentId)
+                    .orElseThrow(() -> new RuntimeException("Catégorie parente introuvable (ID: " + finalParentId + ")"));
+            builder.parent(parent);
+        }
+
+        return categoryRepository.save(builder.build());
     }
 
     @Override

@@ -1,5 +1,6 @@
 package GestionPlat.example.demo.modules.stock.controller;
 
+import GestionPlat.example.demo.modules.stock.dto.CategoryRequest;
 import GestionPlat.example.demo.modules.stock.model.Category;
 import GestionPlat.example.demo.modules.stock.service.CategoryService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,7 +35,7 @@ public class CategoryController {
     @Operation(summary = "Créer une nouvelle catégorie")
     @PostMapping
     @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'WRITE_STOCK')")
-    public ResponseEntity<Category> createCategory(@RequestBody Category category) {
-        return ResponseEntity.ok(categoryService.createCategory(category));
+    public ResponseEntity<Category> createCategory(@RequestBody CategoryRequest request) {
+        return ResponseEntity.ok(categoryService.createCategory(request));
     }
 }
