@@ -56,6 +56,12 @@ public class DataInitializer implements CommandLineRunner {
                         .description("Opérations quotidiennes et caisse")
                         .build()));
 
+        roleRepository.findByName("ROLE_CLIENT")
+                .orElseGet(() -> roleRepository.save(Role.builder()
+                        .name("ROLE_CLIENT")
+                        .description("Client externe - Boutique et commandes en ligne")
+                        .build()));
+
         // Create or update default Super Admin: admin@gesten.com / passer
         createOrUpdateAdmin("admin@gesten.com", "passer", "Mael", "Koutoglo", superAdminRole);
         

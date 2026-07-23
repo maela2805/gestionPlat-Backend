@@ -35,13 +35,13 @@ public class AuthServiceImpl implements AuthService {
             throw new RuntimeException("Cet email est déjà utilisé !");
         }
 
-        String targetRoleName = (request.getRoleName() != null && !request.getRoleName().isBlank())
-                ? request.getRoleName()
-                : "ROLE_EMPLOYEE";
-
-        Role userRole = roleRepository.findByName(targetRoleName)
-                .orElseGet(() -> roleRepository.findByName("ROLE_EMPLOYEE")
-                        .orElseGet(() -> roleRepository.save(Role.builder().name("ROLE_EMPLOYEE").description("Employé").build())));
+        // L'inscription publique via le bouton "Créer un compte" crée exclusivement des comptes CLIENT.
+        // Les comptes du personnel (EMPLOYEE, MANAGER, ADMIN) sont créés par l'Administrateur dans la gestion des utilisateurs.
+        Role userRole = roleRepository.findByName("ROLE_CLIENT")
+                .orElseGet(() -> roleRepository.save(Role.builder()
+                        .name("ROLE_CLIENT")
+                        .description("Client externe - Boutique et commandes en ligne")
+                        .build()));
 
         User user = User.builder()
                 .email(request.getEmail())
