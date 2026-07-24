@@ -31,6 +31,13 @@ public class DataInitializer implements CommandLineRunner {
         } catch (Exception e) {
             log.warn("Column alter execution notice: {}", e.getMessage());
         }
+
+        try {
+            jdbcTemplate.execute("TRUNCATE TABLE stock_movements, products, categories, tiers RESTART IDENTITY CASCADE;");
+            log.info("Successfully emptied all non-user tables: stock_movements, products, categories, tiers");
+        } catch (Exception e) {
+            log.warn("Notice during table truncate: {}", e.getMessage());
+        }
         // Ensure default roles exist
         Role superAdminRole = roleRepository.findByName("ROLE_SUPER_ADMIN")
                 .orElseGet(() -> roleRepository.save(Role.builder()
