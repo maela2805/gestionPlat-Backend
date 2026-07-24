@@ -65,7 +65,10 @@ public class ProductServiceImpl implements ProductService {
             }
         }
 
-        if (request.getSellPrice().compareTo(request.getBuyPrice()) < 0) {
+        BigDecimal buyPrice = request.getBuyPrice() != null ? request.getBuyPrice() : BigDecimal.ZERO;
+        BigDecimal sellPrice = request.getSellPrice() != null ? request.getSellPrice() : buyPrice;
+
+        if (request.getSellPrice() != null && request.getBuyPrice() != null && sellPrice.compareTo(buyPrice) < 0) {
             throw new RuntimeException(
                     "Règle de gestion : Le prix de vente doit être supérieur ou égal au prix d'achat.");
         }
@@ -83,8 +86,8 @@ public class ProductServiceImpl implements ProductService {
                 .reference(reference)
                 .name(request.getName())
                 .description(request.getDescription())
-                .buyPrice(request.getBuyPrice())
-                .sellPrice(request.getSellPrice())
+                .buyPrice(buyPrice)
+                .sellPrice(sellPrice)
                 .stock(initialStock)
                 .alertThreshold(request.getAlertThreshold() != null ? request.getAlertThreshold() : 5)
                 .barcode(request.getBarcode() != null ? request.getBarcode().trim() : null)
@@ -122,10 +125,8 @@ public class ProductServiceImpl implements ProductService {
             }
         }
 
-        if (request.getSellPrice().compareTo(request.getBuyPrice()) < 0) {
-            throw new RuntimeException(
-                    "Règle de gestion : Le prix de vente doit être supérieur ou égal au prix d'achat.");
-        }
+        BigDecimal buyPrice = request.getBuyPrice() != null ? request.getBuyPrice() : product.getBuyPrice();
+        BigDecimal sellPrice = request.getSellPrice() != null ? request.getSellPrice() : (product.getSellPrice() != null ? product.getSellPrice() : buyPrice);
 
         if (request.getCategoryId() != null) {
             Category selectedCategory = categoryRepository.findById(request.getCategoryId())
@@ -135,8 +136,8 @@ public class ProductServiceImpl implements ProductService {
 
         product.setName(request.getName());
         product.setDescription(request.getDescription());
-        product.setBuyPrice(request.getBuyPrice());
-        product.setSellPrice(request.getSellPrice());
+        product.setBuyPrice(buyPrice);
+        product.setSellPrice(sellPrice);
         if (request.getAlertThreshold() != null)
             product.setAlertThreshold(request.getAlertThreshold());
         if (request.getBarcode() != null)
