@@ -15,8 +15,10 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 public class CreatePurchaseOrderItemRequest {
-    @NotNull(message = "L'ID du produit est obligatoire")
     private Long productId;
+    private String productName;
+    private String productReference;
+    private Long categoryId;
 
     @NotNull(message = "Le prix unitaire d'achat est obligatoire")
     @PositiveOrZero(message = "Le prix unitaire doit être positif")

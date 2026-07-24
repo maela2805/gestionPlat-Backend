@@ -26,6 +26,9 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import GestionPlat.example.demo.modules.stock.model.Category;
+import GestionPlat.example.demo.modules.stock.repository.CategoryRepository;
+
 @Service
 @RequiredArgsConstructor
 public class PurchaseOrderServiceImpl implements PurchaseOrderService {
@@ -33,6 +36,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final TiersRepository tiersRepository;
     private final ProductRepository productRepository;
+    private final CategoryRepository categoryRepository;
     private final StockMovementRepository stockMovementRepository;
 
     @Override
@@ -78,14 +82,30 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         BigDecimal totalAmount = BigDecimal.ZERO;
 
         for (CreatePurchaseOrderItemRequest itemReq : request.getItems()) {
-            Product product = productRepository.findById(itemReq.getProductId())
-                    .orElseThrow(() -> new RuntimeException("Produit introuvable avec l'ID : " + itemReq.getProductId()));
+            Product product = null;
+            String pendingName = null;
+            String pendingRef = null;
+            Long pendingCatId = null;
+
+            if (itemReq.getProductId() != null) {
+                product = productRepository.findById(itemReq.getProductId())
+                        .orElseThrow(() -> new RuntimeException("Produit introuvable avec l'ID : " + itemReq.getProductId()));
+            } else if (itemReq.getProductName() != null && !itemReq.getProductName().isBlank()) {
+                pendingName = itemReq.getProductName().trim();
+                pendingRef = itemReq.getProductReference() != null ? itemReq.getProductReference().trim() : null;
+                pendingCatId = itemReq.getCategoryId();
+            } else {
+                throw new RuntimeException("Chaque ligne de commande doit soit spécifier un produit existant, soit le nom d'un nouveau produit.");
+            }
 
             BigDecimal lineTotal = itemReq.getUnitPrice().multiply(BigDecimal.valueOf(itemReq.getQuantityOrdered()));
 
             PurchaseOrderItem item = PurchaseOrderItem.builder()
                     .purchaseOrder(order)
                     .product(product)
+                    .pendingProductName(pendingName)
+                    .pendingProductRef(pendingRef)
+                    .pendingCategoryId(pendingCatId)
                     .unitPrice(itemReq.getUnitPrice())
                     .quantityOrdered(itemReq.getQuantityOrdered())
                     .quantityReceived(0)
@@ -135,12 +155,42 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             item.setQuantityReceived(item.getQuantityOrdered());
 
             Product product = item.getProduct();
-            product.setStock(product.getStock() + item.getQuantityOrdered());
-            // Optionally update buyPrice to current unit price
-            if (item.getUnitPrice() != null && item.getUnitPrice().compareTo(BigDecimal.ZERO) > 0) {
-                product.setBuyPrice(item.getUnitPrice());
+
+            // If the item is a new pending product, create it in DB NOW upon delivery!
+            if (product == null && item.getPendingProductName() != null) {
+                String ref = item.getPendingProductRef();
+                if (ref == null || ref.isBlank()) {
+                    long count = productRepository.count() + 1;
+                    ref = String.format("PROD-%05d", count);
+                }
+                if (productRepository.existsByReference(ref)) {
+                    ref = "PROD-" + System.currentTimeMillis() % 100000;
+                }
+
+                Category category = null;
+                if (item.getPendingCategoryId() != null) {
+                    category = categoryRepository.findById(item.getPendingCategoryId()).orElse(null);
+                }
+
+                product = Product.builder()
+                        .reference(ref)
+                        .name(item.getPendingProductName())
+                        .buyPrice(item.getUnitPrice())
+                        .sellPrice(item.getUnitPrice())
+                        .stock(item.getQuantityOrdered())
+                        .alertThreshold(5)
+                        .category(category)
+                        .build();
+
+                product = productRepository.save(product);
+                item.setProduct(product);
+            } else if (product != null) {
+                product.setStock(product.getStock() + item.getQuantityOrdered());
+                if (item.getUnitPrice() != null && item.getUnitPrice().compareTo(BigDecimal.ZERO) > 0) {
+                    product.setBuyPrice(item.getUnitPrice());
+                }
+                productRepository.save(product);
             }
-            productRepository.save(product);
 
             StockMovement movement = StockMovement.builder()
                     .product(product)
@@ -172,18 +222,24 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     }
 
     private PurchaseOrderDTO mapToDTO(PurchaseOrder order) {
-        List<PurchaseOrderItemDTO> itemDTOs = order.getItems().stream().map(item ->
-                PurchaseOrderItemDTO.builder()
-                        .id(item.getId())
-                        .productId(item.getProduct().getId())
-                        .productReference(item.getProduct().getReference())
-                        .productName(item.getProduct().getName())
-                        .unitPrice(item.getUnitPrice())
-                        .quantityOrdered(item.getQuantityOrdered())
-                        .quantityReceived(item.getQuantityReceived())
-                        .totalPrice(item.getTotalPrice())
-                        .build()
-        ).collect(Collectors.toList());
+        List<PurchaseOrderItemDTO> itemDTOs = order.getItems().stream().map(item -> {
+            boolean isPending = (item.getProduct() == null);
+            Long pId = !isPending ? item.getProduct().getId() : null;
+            String pRef = !isPending ? item.getProduct().getReference() : item.getPendingProductRef();
+            String pName = !isPending ? item.getProduct().getName() : item.getPendingProductName();
+
+            return PurchaseOrderItemDTO.builder()
+                    .id(item.getId())
+                    .productId(pId)
+                    .productReference(pRef)
+                    .productName(pName)
+                    .unitPrice(item.getUnitPrice())
+                    .quantityOrdered(item.getQuantityOrdered())
+                    .quantityReceived(item.getQuantityReceived())
+                    .totalPrice(item.getTotalPrice())
+                    .isPendingProduct(isPending)
+                    .build();
+        }).collect(Collectors.toList());
 
         return PurchaseOrderDTO.builder()
                 .id(order.getId())

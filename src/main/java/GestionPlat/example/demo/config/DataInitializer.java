@@ -33,10 +33,14 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         try {
-            jdbcTemplate.execute("TRUNCATE TABLE stock_movements, products, categories, tiers RESTART IDENTITY CASCADE;");
-            log.info("Successfully emptied all non-user tables: stock_movements, products, categories, tiers");
+            jdbcTemplate.execute("DELETE FROM purchase_order_items WHERE product_id IN (SELECT id FROM products WHERE LOWER(name) LIKE '%assiette creuse%');");
+            jdbcTemplate.execute("DELETE FROM stock_movements WHERE product_id IN (SELECT id FROM products WHERE LOWER(name) LIKE '%assiette creuse%');");
+            jdbcTemplate.execute("DELETE FROM products WHERE LOWER(name) LIKE '%assiette creuse%';");
+            jdbcTemplate.execute("DELETE FROM purchase_order_items WHERE purchase_order_id IN (SELECT id FROM purchase_orders WHERE reference LIKE '%CMD%');");
+            jdbcTemplate.execute("DELETE FROM purchase_orders WHERE reference LIKE '%CMD%';");
+            log.info("Successfully cleaned up test products and test orders without wiping DB");
         } catch (Exception e) {
-            log.warn("Notice during table truncate: {}", e.getMessage());
+            log.warn("Notice during test data cleanup: {}", e.getMessage());
         }
         // Ensure default roles exist
         Role superAdminRole = roleRepository.findByName("ROLE_SUPER_ADMIN")

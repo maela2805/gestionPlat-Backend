@@ -28,8 +28,17 @@ public class PurchaseOrderItem {
     private PurchaseOrder purchaseOrder;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "product_id", nullable = false)
+    @JoinColumn(name = "product_id", nullable = true)
     private Product product;
+
+    @Column(name = "pending_product_name")
+    private String pendingProductName;
+
+    @Column(name = "pending_product_ref")
+    private String pendingProductRef;
+
+    @Column(name = "pending_category_id")
+    private Long pendingCategoryId;
 
     @Column(name = "unit_price", nullable = false)
     private BigDecimal unitPrice;

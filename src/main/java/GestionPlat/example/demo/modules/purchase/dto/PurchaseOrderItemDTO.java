@@ -20,4 +20,5 @@ public class PurchaseOrderItemDTO {
     private Integer quantityOrdered;
     private Integer quantityReceived;
     private BigDecimal totalPrice;
+    private Boolean isPendingProduct;
 }
