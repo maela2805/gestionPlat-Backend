@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -34,6 +35,7 @@ public class WarehouseStockController {
 
     @Operation(summary = "Effectuer un transfert de stock entre deux entrepôts")
     @PostMapping("/transfer")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'SUPER_ADMIN', 'ROLE_ADMIN', 'ADMIN', 'ROLE_MANAGER', 'MANAGER', 'WRITE_STOCK')")
     public ResponseEntity<String> transferStock(@RequestBody TransferStockRequest request, Authentication authentication) {
         String email = authentication != null ? authentication.getName() : "admin@system.com";
         boutiqueStockService.transferStock(request, email);

@@ -29,8 +29,30 @@ public class CustomUserDetailsService implements UserDetailsService {
         Set<GrantedAuthority> authorities = new HashSet<>();
         
         if (user.getRole() != null) {
-            // Ajouter le rôle
-            authorities.add(new SimpleGrantedAuthority(user.getRole().getName()));
+            String roleName = user.getRole().getName();
+            if (roleName != null) {
+                authorities.add(new SimpleGrantedAuthority(roleName));
+                if (roleName.startsWith("ROLE_")) {
+                    authorities.add(new SimpleGrantedAuthority(roleName.substring(5)));
+                } else {
+                    authorities.add(new SimpleGrantedAuthority("ROLE_" + roleName));
+                }
+            }
+
+            // Accorder automatiquement toutes les autorisations fondamentales au Super Admin et Admin
+            if ("ROLE_SUPER_ADMIN".equalsIgnoreCase(roleName) || "SUPER_ADMIN".equalsIgnoreCase(roleName) ||
+                "ROLE_ADMIN".equalsIgnoreCase(roleName) || "ADMIN".equalsIgnoreCase(roleName)) {
+                authorities.add(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN"));
+                authorities.add(new SimpleGrantedAuthority("SUPER_ADMIN"));
+                authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+                authorities.add(new SimpleGrantedAuthority("ADMIN"));
+                authorities.add(new SimpleGrantedAuthority("WRITE_STOCK"));
+                authorities.add(new SimpleGrantedAuthority("READ_STOCK"));
+                authorities.add(new SimpleGrantedAuthority("DELETE_STOCK"));
+                authorities.add(new SimpleGrantedAuthority("MANAGE_USERS"));
+                authorities.add(new SimpleGrantedAuthority("MANAGE_ORDERS"));
+                authorities.add(new SimpleGrantedAuthority("MANAGE_CAISSE"));
+            }
             
             // Ajouter les permissions associées au rôle
             if (user.getRole().getPermissions() != null) {
