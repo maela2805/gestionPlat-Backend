@@ -106,7 +106,7 @@ public class BoutiqueServiceImpl implements BoutiqueService {
         List<BoutiqueWholesalePrice> existingPrices = wholesalePriceRepository.findByBoutiqueId(boutiqueId);
 
         Map<Long, BoutiqueWholesalePrice> priceMap = existingPrices.stream()
-                .collect(Collectors.toMap(p -> p.getProduct().getId(), Function.identity()));
+                .collect(Collectors.toMap(p -> p.getProduct().getId(), Function.identity(), (p1, p2) -> p1));
 
         return products.stream().map(product -> {
             BoutiqueWholesalePrice price = priceMap.get(product.getId());

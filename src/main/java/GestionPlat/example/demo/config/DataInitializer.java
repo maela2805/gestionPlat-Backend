@@ -32,16 +32,7 @@ public class DataInitializer implements CommandLineRunner {
             log.warn("Column alter execution notice: {}", e.getMessage());
         }
 
-        try {
-            jdbcTemplate.execute("DELETE FROM purchase_order_items WHERE product_id IN (SELECT id FROM products WHERE LOWER(name) LIKE '%assiette creuse%');");
-            jdbcTemplate.execute("DELETE FROM stock_movements WHERE product_id IN (SELECT id FROM products WHERE LOWER(name) LIKE '%assiette creuse%');");
-            jdbcTemplate.execute("DELETE FROM products WHERE LOWER(name) LIKE '%assiette creuse%';");
-            jdbcTemplate.execute("DELETE FROM purchase_order_items WHERE purchase_order_id IN (SELECT id FROM purchase_orders WHERE reference LIKE '%CMD%');");
-            jdbcTemplate.execute("DELETE FROM purchase_orders WHERE reference LIKE '%CMD%';");
-            log.info("Successfully cleaned up test products and test orders without wiping DB");
-        } catch (Exception e) {
-            log.warn("Notice during test data cleanup: {}", e.getMessage());
-        }
+
         // Ensure default roles exist
         Role superAdminRole = roleRepository.findByName("ROLE_SUPER_ADMIN")
                 .orElseGet(() -> roleRepository.save(Role.builder()

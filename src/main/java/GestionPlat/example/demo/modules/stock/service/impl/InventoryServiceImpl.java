@@ -7,6 +7,7 @@ import GestionPlat.example.demo.modules.stock.dto.InventoryItemRequest;
 import GestionPlat.example.demo.modules.stock.model.*;
 import GestionPlat.example.demo.modules.stock.model.StockMovement.MovementReason;
 import GestionPlat.example.demo.modules.stock.model.StockMovement.MovementType;
+import GestionPlat.example.demo.modules.stock.repository.BoutiqueStockRepository;
 import GestionPlat.example.demo.modules.stock.repository.InventoryRepository;
 import GestionPlat.example.demo.modules.stock.repository.ProductRepository;
 import GestionPlat.example.demo.modules.stock.repository.StockMovementRepository;
@@ -27,16 +28,21 @@ public class InventoryServiceImpl implements InventoryService {
     private final InventoryRepository inventoryRepository;
     private final BoutiqueRepository boutiqueRepository;
     private final ProductRepository productRepository;
+    private final BoutiqueStockRepository boutiqueStockRepository;
     private final StockMovementRepository stockMovementRepository;
 
     @Override
     @Transactional
     public Inventory createInventory(CreateInventoryRequest request, String userEmail) {
-        Boutique boutique = boutiqueRepository.findById(request.getBoutiqueId())
-                .orElseThrow(() -> new RuntimeException("Boutique non trouvée avec l'id: " + request.getBoutiqueId()));
+        Boutique boutique = null;
+        if (request.getBoutiqueId() != null) {
+            boutique = boutiqueRepository.findById(request.getBoutiqueId())
+                    .orElseThrow(() -> new RuntimeException("Boutique non trouvée avec l'id: " + request.getBoutiqueId()));
+        }
 
+        String boutiqueCode = boutique != null ? boutique.getCode() : "CENTRAL";
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-        String ref = "INV-" + boutique.getCode() + "-" + timestamp;
+        String ref = "INV-" + boutiqueCode + "-" + timestamp;
 
         Inventory inventory = Inventory.builder()
                 .reference(ref)
@@ -52,7 +58,15 @@ public class InventoryServiceImpl implements InventoryService {
                 Product product = productRepository.findById(itemReq.getProductId())
                         .orElseThrow(() -> new RuntimeException("Produit non trouvé avec l'id: " + itemReq.getProductId()));
 
-                int theoretical = product.getStock() != null ? product.getStock() : 0;
+                int theoretical;
+                if (boutique != null) {
+                    theoretical = boutiqueStockRepository.findByBoutiqueIdAndProductId(boutique.getId(), product.getId())
+                            .map(bs -> bs.getQuantity() != null ? bs.getQuantity() : 0)
+                            .orElse(0);
+                } else {
+                    theoretical = product.getStock() != null ? product.getStock() : 0;
+                }
+
                 int counted = itemReq.getCountedQuantity() != null ? itemReq.getCountedQuantity() : 0;
                 int gap = counted - theoretical;
 
@@ -81,6 +95,8 @@ public class InventoryServiceImpl implements InventoryService {
             throw new RuntimeException("Cet inventaire est déjà validé.");
         }
 
+        Boutique boutique = inventory.getBoutique();
+
         for (InventoryItem item : inventory.getItems()) {
             Product product = item.getProduct();
             int gap = item.getGap();
@@ -89,14 +105,26 @@ public class InventoryServiceImpl implements InventoryService {
                 MovementType type = gap > 0 ? MovementType.ENTREE : MovementType.SORTIE;
                 int qty = Math.abs(gap);
 
-                // Update product stock
-                product.setStock(item.getCountedQuantity());
-                productRepository.save(product);
+                if (boutique != null) {
+                    // Update Boutique stock
+                    BoutiqueStock bStock = boutiqueStockRepository.findByBoutiqueIdAndProductId(boutique.getId(), product.getId())
+                            .orElseGet(() -> BoutiqueStock.builder()
+                                    .boutique(boutique)
+                                    .product(product)
+                                    .quantity(0)
+                                    .build());
+                    bStock.setQuantity(item.getCountedQuantity());
+                    boutiqueStockRepository.save(bStock);
+                } else {
+                    // Update Central product stock
+                    product.setStock(item.getCountedQuantity());
+                    productRepository.save(product);
+                }
 
                 // Record stock movement for audit
                 StockMovement movement = StockMovement.builder()
                         .product(product)
-                        .boutique(inventory.getBoutique())
+                        .boutique(boutique)
                         .quantity(qty)
                         .type(type)
                         .reason(MovementReason.AJUSTEMENT)

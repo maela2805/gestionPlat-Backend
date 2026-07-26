@@ -185,7 +185,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 product = productRepository.save(product);
                 item.setProduct(product);
             } else if (product != null) {
-                product.setStock(product.getStock() + item.getQuantityOrdered());
+                int currentStock = product.getStock() != null ? product.getStock() : 0;
+                product.setStock(currentStock + item.getQuantityOrdered());
                 if (item.getUnitPrice() != null && item.getUnitPrice().compareTo(BigDecimal.ZERO) > 0) {
                     product.setBuyPrice(item.getUnitPrice());
                 }

@@ -101,10 +101,11 @@ public class BoutiqueStockServiceImpl implements BoutiqueStockService {
         Boutique sourceBoutique = null;
         if (request.getFromBoutiqueId() == null) {
             // Source = Entrepôt Central
-            if (product.getStock() < qty) {
-                throw new RuntimeException("Stock insuffisant dans l'entrepôt central. Disponible: " + product.getStock());
+            int currentCentralStock = product.getStock() != null ? product.getStock() : 0;
+            if (currentCentralStock < qty) {
+                throw new RuntimeException("Stock insuffisant dans l'entrepôt central. Disponible: " + currentCentralStock);
             }
-            product.setStock(product.getStock() - qty);
+            product.setStock(currentCentralStock - qty);
             productRepository.save(product);
         } else {
             // Source = Entrepôt d'une boutique
@@ -113,10 +114,11 @@ public class BoutiqueStockServiceImpl implements BoutiqueStockService {
             BoutiqueStock sourceStock = boutiqueStockRepository.findByBoutiqueIdAndProductId(request.getFromBoutiqueId(), product.getId())
                     .orElseThrow(() -> new RuntimeException("Aucun stock trouvé dans la boutique source pour ce produit."));
 
-            if (sourceStock.getQuantity() < qty) {
-                throw new RuntimeException("Stock insuffisant dans " + sourceBoutique.getName() + ". Disponible: " + sourceStock.getQuantity());
+            int currentBoutiqueStock = sourceStock.getQuantity() != null ? sourceStock.getQuantity() : 0;
+            if (currentBoutiqueStock < qty) {
+                throw new RuntimeException("Stock insuffisant dans " + sourceBoutique.getName() + ". Disponible: " + currentBoutiqueStock);
             }
-            sourceStock.setQuantity(sourceStock.getQuantity() - qty);
+            sourceStock.setQuantity(currentBoutiqueStock - qty);
             boutiqueStockRepository.save(sourceStock);
         }
 
@@ -124,7 +126,8 @@ public class BoutiqueStockServiceImpl implements BoutiqueStockService {
         Boutique targetBoutique = null;
         if (request.getToBoutiqueId() == null) {
             // Destination = Entrepôt Central
-            product.setStock(product.getStock() + qty);
+            int currentCentralStock = product.getStock() != null ? product.getStock() : 0;
+            product.setStock(currentCentralStock + qty);
             productRepository.save(product);
         } else {
             // Destination = Entrepôt d'une boutique

@@ -28,13 +28,15 @@ public class StockMovementServiceImpl implements StockMovementService {
 
         int qty = Math.abs(request.getQuantity());
 
+        int currentStock = product.getStock() != null ? product.getStock() : 0;
+
         if (request.getType() == MovementType.SORTIE) {
-            if (product.getStock() < qty) {
-                throw new RuntimeException("Règle de gestion : Le stock ne peut pas être négatif ! Stock actuel : " + product.getStock());
+            if (currentStock < qty) {
+                throw new RuntimeException("Règle de gestion : Le stock ne peut pas être négatif ! Stock actuel : " + currentStock);
             }
-            product.setStock(product.getStock() - qty);
+            product.setStock(currentStock - qty);
         } else {
-            product.setStock(product.getStock() + qty);
+            product.setStock(currentStock + qty);
         }
 
         Product updatedProduct = productRepository.save(product);

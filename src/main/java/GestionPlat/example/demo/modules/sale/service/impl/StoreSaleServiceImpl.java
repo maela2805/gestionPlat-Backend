@@ -127,16 +127,18 @@ public class StoreSaleServiceImpl implements StoreSaleService {
         // Check stock availability
         for (StoreSaleItem item : sale.getItems()) {
             Product product = item.getProduct();
-            if (product.getStock() < item.getQuantity()) {
+            int currentStock = product.getStock() != null ? product.getStock() : 0;
+            if (currentStock < item.getQuantity()) {
                 throw new RuntimeException("Stock central insuffisant pour le produit '" + product.getName() +
-                        "' (Stock disponible : " + product.getStock() + ", Quantité demandée : " + item.getQuantity() + ")");
+                        "' (Stock disponible : " + currentStock + ", Quantité demandée : " + item.getQuantity() + ")");
             }
         }
 
         // Deduct stock & create stock movements
         for (StoreSaleItem item : sale.getItems()) {
             Product product = item.getProduct();
-            product.setStock(product.getStock() - item.getQuantity());
+            int currentStock = product.getStock() != null ? product.getStock() : 0;
+            product.setStock(currentStock - item.getQuantity());
             productRepository.save(product);
 
             StockMovement movement = StockMovement.builder()

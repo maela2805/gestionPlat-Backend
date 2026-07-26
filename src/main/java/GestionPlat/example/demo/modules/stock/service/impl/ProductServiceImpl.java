@@ -164,6 +164,12 @@ public class ProductServiceImpl implements ProductService {
                     "Règle de gestion : Impossible de supprimer un produit ayant un historique de mouvements de stock.");
         }
 
-        productRepository.delete(product);
+        try {
+            productRepository.delete(product);
+            productRepository.flush();
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            throw new RuntimeException(
+                    "Impossible de supprimer ce produit car il est lié à des commandes, ventes ou tarifs boutiques.");
+        }
     }
 }

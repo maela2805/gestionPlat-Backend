@@ -28,7 +28,7 @@ public class Inventory {
     private String reference;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "boutique_id", nullable = false)
+    @JoinColumn(name = "boutique_id")
     private Boutique boutique;
 
     @Enumerated(EnumType.STRING)
