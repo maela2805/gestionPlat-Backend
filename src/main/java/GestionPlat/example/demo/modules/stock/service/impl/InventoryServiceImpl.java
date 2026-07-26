@@ -42,7 +42,8 @@ public class InventoryServiceImpl implements InventoryService {
 
         String boutiqueCode = boutique != null ? boutique.getCode() : "CENTRAL";
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
-        String ref = "INV-" + boutiqueCode + "-" + timestamp;
+        String uniqueId = java.util.UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+        String ref = "INV-" + boutiqueCode + "-" + timestamp + "-" + uniqueId;
 
         Inventory inventory = Inventory.builder()
                 .reference(ref)

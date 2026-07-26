@@ -45,6 +45,8 @@ public class GlobalExceptionHandler {
         String msg = "Erreur de données : l'une des valeurs saisies existe déjà ou dépasse la taille maximale autorisée.";
         if (ex.getMessage() != null && ex.getMessage().contains("value too long")) {
             msg = "Erreur de taille : l'image ou la description est trop volumineuse pour la base de données.";
+        } else if (ex.getRootCause() != null && ex.getRootCause().getMessage() != null) {
+            msg += " (" + ex.getRootCause().getMessage() + ")";
         }
         body.put("message", msg);
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
