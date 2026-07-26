@@ -75,11 +75,12 @@ public class DataInitializer implements CommandLineRunner {
         Optional<User> existingUserOpt = userRepository.findByEmail(email);
         if (existingUserOpt.isPresent()) {
             User existing = existingUserOpt.get();
-            existing.setPassword(passwordEncoder.encode(rawPassword));
-            existing.setRole(role);
-            existing.setActive(true);
-            userRepository.save(existing);
-            log.info("Admin user updated: {}", email);
+            if (existing.getRole() == null || !existing.isActive()) {
+                existing.setRole(role);
+                existing.setActive(true);
+                userRepository.save(existing);
+                log.info("Admin user updated: {}", email);
+            }
         } else {
             User newAdmin = User.builder()
                     .email(email)
