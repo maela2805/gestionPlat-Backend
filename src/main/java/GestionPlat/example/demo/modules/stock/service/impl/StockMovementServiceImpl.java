@@ -62,4 +62,9 @@ public class StockMovementServiceImpl implements StockMovementService {
     public List<StockMovement> getMovementsByProduct(Long productId) {
         return stockMovementRepository.findByProductIdOrderByCreatedAtDesc(productId);
     }
+
+    @Override
+    public List<StockMovement> getMovementsByBoutique(Long boutiqueId) {
+        return stockMovementRepository.findByBoutiqueIdOrderByCreatedAtDesc(boutiqueId);
+    }
 }

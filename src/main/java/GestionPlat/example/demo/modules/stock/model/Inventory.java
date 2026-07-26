@@ -1,5 +1,6 @@
 package GestionPlat.example.demo.modules.stock.model;
 
+import GestionPlat.example.demo.modules.boutique.model.Boutique;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,60 +8,46 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
-import GestionPlat.example.demo.modules.boutique.model.Boutique;
-
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "stock_movements")
-public class StockMovement {
-
-    public enum MovementType {
-        ENTREE,
-        SORTIE
-    }
-
-    public enum MovementReason {
-        REAPPROVISIONNEMENT,
-        VENTE,
-        PERTE,
-        AJUSTEMENT,
-        RETOUR_FOURNISSEUR
-    }
+@Table(name = "inventories")
+public class Inventory {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
+    @Column(nullable = false, unique = true)
+    private String reference;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "boutique_id")
+    @JoinColumn(name = "boutique_id", nullable = false)
     private Boutique boutique;
 
-    @Column(nullable = false)
-    private Integer quantity;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private MovementType type;
+    private InventoryStatus status;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private MovementReason reason;
+    private String note;
 
     @Column(name = "user_email")
     private String userEmail;
 
-    private String note;
+    @OneToMany(mappedBy = "inventory", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<InventoryItem> items = new ArrayList<>();
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "validated_at")
+    private LocalDateTime validatedAt;
 }

@@ -10,4 +10,5 @@ public interface StockMovementService {
     Product adjustStock(StockAdjustmentRequest request, String userEmail);
     List<StockMovement> getAllStockMovements();
     List<StockMovement> getMovementsByProduct(Long productId);
+    List<StockMovement> getMovementsByBoutique(Long boutiqueId);
 }

@@ -18,9 +18,12 @@ public class StockMovementController {
 
     private final StockMovementService stockMovementService;
 
-    @Operation(summary = "Historique complet des mouvements de stock")
+    @Operation(summary = "Historique complet des mouvements de stock (filtrable par entrepôt/boutique)")
     @GetMapping
-    public ResponseEntity<List<StockMovement>> getAllStockMovements() {
+    public ResponseEntity<List<StockMovement>> getAllStockMovements(@RequestParam(required = false) Long boutiqueId) {
+        if (boutiqueId != null) {
+            return ResponseEntity.ok(stockMovementService.getMovementsByBoutique(boutiqueId));
+        }
         return ResponseEntity.ok(stockMovementService.getAllStockMovements());
     }
 
@@ -28,5 +31,11 @@ public class StockMovementController {
     @GetMapping("/product/{productId}")
     public ResponseEntity<List<StockMovement>> getMovementsByProduct(@PathVariable Long productId) {
         return ResponseEntity.ok(stockMovementService.getMovementsByProduct(productId));
+    }
+
+    @Operation(summary = "Historique des mouvements par entrepôt / boutique")
+    @GetMapping("/boutique/{boutiqueId}")
+    public ResponseEntity<List<StockMovement>> getMovementsByBoutique(@PathVariable Long boutiqueId) {
+        return ResponseEntity.ok(stockMovementService.getMovementsByBoutique(boutiqueId));
     }
 }
