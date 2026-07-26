@@ -41,7 +41,7 @@ public class InventoryServiceImpl implements InventoryService {
         }
 
         String boutiqueCode = boutique != null ? boutique.getCode() : "CENTRAL";
-        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
         String ref = "INV-" + boutiqueCode + "-" + timestamp;
 
         Inventory inventory = Inventory.builder()
