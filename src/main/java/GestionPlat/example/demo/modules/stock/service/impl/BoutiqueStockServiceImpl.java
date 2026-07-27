@@ -36,25 +36,24 @@ public class BoutiqueStockServiceImpl implements BoutiqueStockService {
         Boutique boutique = boutiqueRepository.findById(boutiqueId)
                 .orElseThrow(() -> new RuntimeException("Boutique non trouvée avec l'id: " + boutiqueId));
 
-        List<Product> products = productRepository.findAll();
+        List<BoutiqueStock> stocks = boutiqueStockRepository.findByBoutiqueId(boutiqueId);
         List<BoutiqueStockDTO> dtoList = new ArrayList<>();
 
-        for (Product product : products) {
-            Optional<BoutiqueStock> bStockOpt = boutiqueStockRepository.findByBoutiqueIdAndProductId(boutiqueId, product.getId());
-            int qty = bStockOpt.map(BoutiqueStock::getQuantity).orElse(0);
-
-            dtoList.add(BoutiqueStockDTO.builder()
-                    .id(bStockOpt.map(BoutiqueStock::getId).orElse(null))
-                    .boutiqueId(boutique.getId())
-                    .boutiqueName(boutique.getName())
-                    .productId(product.getId())
-                    .productName(product.getName())
-                    .productReference(product.getReference())
-                    .quantity(qty)
-                    .buyPrice(product.getBuyPrice())
-                    .sellPrice(product.getSellPrice())
-                    .alertThreshold(product.getAlertThreshold())
-                    .build());
+        for (BoutiqueStock bs : stocks) {
+            if (bs.getQuantity() != null && bs.getQuantity() > 0) {
+                dtoList.add(BoutiqueStockDTO.builder()
+                        .id(bs.getId())
+                        .boutiqueId(boutique.getId())
+                        .boutiqueName(boutique.getName())
+                        .productId(bs.getProduct().getId())
+                        .productName(bs.getProduct().getName())
+                        .productReference(bs.getProduct().getReference())
+                        .quantity(bs.getQuantity())
+                        .buyPrice(bs.getProduct().getBuyPrice())
+                        .sellPrice(bs.getProduct().getSellPrice())
+                        .alertThreshold(bs.getProduct().getAlertThreshold())
+                        .build());
+            }
         }
 
         return dtoList;
@@ -65,18 +64,20 @@ public class BoutiqueStockServiceImpl implements BoutiqueStockService {
         List<BoutiqueStock> stocks = boutiqueStockRepository.findAll();
         List<BoutiqueStockDTO> dtoList = new ArrayList<>();
         for (BoutiqueStock bs : stocks) {
-            dtoList.add(BoutiqueStockDTO.builder()
-                    .id(bs.getId())
-                    .boutiqueId(bs.getBoutique().getId())
-                    .boutiqueName(bs.getBoutique().getName())
-                    .productId(bs.getProduct().getId())
-                    .productName(bs.getProduct().getName())
-                    .productReference(bs.getProduct().getReference())
-                    .quantity(bs.getQuantity())
-                    .buyPrice(bs.getProduct().getBuyPrice())
-                    .sellPrice(bs.getProduct().getSellPrice())
-                    .alertThreshold(bs.getProduct().getAlertThreshold())
-                    .build());
+            if (bs.getQuantity() != null && bs.getQuantity() > 0) {
+                dtoList.add(BoutiqueStockDTO.builder()
+                        .id(bs.getId())
+                        .boutiqueId(bs.getBoutique().getId())
+                        .boutiqueName(bs.getBoutique().getName())
+                        .productId(bs.getProduct().getId())
+                        .productName(bs.getProduct().getName())
+                        .productReference(bs.getProduct().getReference())
+                        .quantity(bs.getQuantity())
+                        .buyPrice(bs.getProduct().getBuyPrice())
+                        .sellPrice(bs.getProduct().getSellPrice())
+                        .alertThreshold(bs.getProduct().getAlertThreshold())
+                        .build());
+            }
         }
         return dtoList;
     }
