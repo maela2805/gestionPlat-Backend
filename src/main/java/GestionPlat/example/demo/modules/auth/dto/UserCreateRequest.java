@@ -25,4 +25,6 @@ public class UserCreateRequest {
 
     @NotBlank(message = "Le rôle est obligatoire")
     private String roleName;
+
+    private Long boutiqueId;
 }

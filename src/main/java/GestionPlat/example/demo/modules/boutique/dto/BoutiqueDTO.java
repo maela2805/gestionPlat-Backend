@@ -19,6 +19,8 @@ public class BoutiqueDTO {
     private String city;
     private String phone;
     private String managerName;
+    private Long employeeUserId;
+    private String employeeUserName;
     private Boolean active;
     private LocalDateTime createdAt;
 }

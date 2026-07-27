@@ -18,4 +18,6 @@ public class AuthResponse {
     private String firstName;
     private String lastName;
     private String role;
+    private Long boutiqueId;
+    private String boutiqueName;
 }

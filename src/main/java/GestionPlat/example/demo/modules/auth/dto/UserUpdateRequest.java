@@ -15,4 +15,5 @@ public class UserUpdateRequest {
     private String roleName;
     private Boolean active;
     private String password;
+    private Long boutiqueId;
 }

@@ -8,6 +8,8 @@ import GestionPlat.example.demo.modules.auth.model.User;
 import GestionPlat.example.demo.modules.auth.repository.RoleRepository;
 import GestionPlat.example.demo.modules.auth.repository.UserRepository;
 import GestionPlat.example.demo.modules.auth.service.UserService;
+import GestionPlat.example.demo.modules.boutique.model.Boutique;
+import GestionPlat.example.demo.modules.boutique.repository.BoutiqueRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final BoutiqueRepository boutiqueRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -54,12 +57,18 @@ public class UserServiceImpl implements UserService {
                 .orElseGet(() -> roleRepository.findByName("ROLE_EMPLOYEE")
                         .orElseThrow(() -> new RuntimeException("Rôle introuvable: " + request.getRoleName())));
 
+        Boutique boutique = null;
+        if (request.getBoutiqueId() != null) {
+            boutique = boutiqueRepository.findById(request.getBoutiqueId()).orElse(null);
+        }
+
         User user = User.builder()
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .role(role)
+                .boutique(boutique)
                 .active(true)
                 .build();
 
@@ -87,6 +96,15 @@ public class UserServiceImpl implements UserService {
             Role role = roleRepository.findByName(request.getRoleName())
                     .orElseThrow(() -> new RuntimeException("Rôle introuvable: " + request.getRoleName()));
             user.setRole(role);
+        }
+
+        if (request.getBoutiqueId() != null) {
+            if (request.getBoutiqueId() <= 0L) {
+                user.setBoutique(null);
+            } else {
+                Boutique boutique = boutiqueRepository.findById(request.getBoutiqueId()).orElse(null);
+                user.setBoutique(boutique);
+            }
         }
 
         return mapToDTO(userRepository.save(user));
@@ -120,6 +138,8 @@ public class UserServiceImpl implements UserService {
                 .active(user.isActive())
                 .roleName(user.getRole() != null ? user.getRole().getName() : "ROLE_EMPLOYEE")
                 .roleDescription(user.getRole() != null ? user.getRole().getDescription() : "")
+                .boutiqueId(user.getBoutique() != null ? user.getBoutique().getId() : null)
+                .boutiqueName(user.getBoutique() != null ? user.getBoutique().getName() : null)
                 .createdAt(user.getCreatedAt())
                 .build();
     }

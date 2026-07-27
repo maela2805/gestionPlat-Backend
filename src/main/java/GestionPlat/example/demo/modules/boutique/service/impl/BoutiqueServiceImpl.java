@@ -11,6 +11,8 @@ import GestionPlat.example.demo.modules.boutique.repository.BoutiqueWholesalePri
 import GestionPlat.example.demo.modules.boutique.service.BoutiqueService;
 import GestionPlat.example.demo.modules.stock.model.Product;
 import GestionPlat.example.demo.modules.stock.repository.ProductRepository;
+import GestionPlat.example.demo.modules.auth.model.User;
+import GestionPlat.example.demo.modules.auth.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +30,7 @@ public class BoutiqueServiceImpl implements BoutiqueService {
     private final BoutiqueRepository boutiqueRepository;
     private final BoutiqueWholesalePriceRepository wholesalePriceRepository;
     private final ProductRepository productRepository;
+    private final UserRepository userRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -66,6 +69,14 @@ public class BoutiqueServiceImpl implements BoutiqueService {
                 .build();
 
         Boutique saved = boutiqueRepository.save(boutique);
+
+        if (request.getEmployeeUserId() != null && request.getEmployeeUserId() > 0) {
+            userRepository.findById(request.getEmployeeUserId()).ifPresent(user -> {
+                user.setBoutique(saved);
+                userRepository.save(user);
+            });
+        }
+
         return mapToDTO(saved);
     }
 
@@ -85,6 +96,22 @@ public class BoutiqueServiceImpl implements BoutiqueService {
         }
 
         Boutique updated = boutiqueRepository.save(boutique);
+
+        if (request.getEmployeeUserId() != null) {
+            if (request.getEmployeeUserId() <= 0) {
+                List<User> assigned = userRepository.findByBoutiqueId(updated.getId());
+                for (User u : assigned) {
+                    u.setBoutique(null);
+                    userRepository.save(u);
+                }
+            } else {
+                userRepository.findById(request.getEmployeeUserId()).ifPresent(user -> {
+                    user.setBoutique(updated);
+                    userRepository.save(user);
+                });
+            }
+        }
+
         return mapToDTO(updated);
     }
 
@@ -93,6 +120,13 @@ public class BoutiqueServiceImpl implements BoutiqueService {
     public void deleteBoutique(Long id) {
         Boutique boutique = boutiqueRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Boutique introuvable avec l'ID : " + id));
+        
+        List<User> assigned = userRepository.findByBoutiqueId(id);
+        for (User u : assigned) {
+            u.setBoutique(null);
+            userRepository.save(u);
+        }
+        
         boutiqueRepository.delete(boutique);
     }
 
@@ -161,6 +195,18 @@ public class BoutiqueServiceImpl implements BoutiqueService {
     }
 
     private BoutiqueDTO mapToDTO(Boutique boutique) {
+        Long employeeUserId = null;
+        String employeeUserName = null;
+
+        List<User> users = userRepository.findByBoutiqueId(boutique.getId());
+        if (!users.isEmpty()) {
+            User firstUser = users.get(0);
+            employeeUserId = firstUser.getId();
+            employeeUserName = ((firstUser.getFirstName() != null ? firstUser.getFirstName() : "") + " " +
+                                (firstUser.getLastName() != null ? firstUser.getLastName() : "")).trim();
+            if (employeeUserName.isEmpty()) employeeUserName = firstUser.getEmail();
+        }
+
         return BoutiqueDTO.builder()
                 .id(boutique.getId())
                 .code(boutique.getCode())
@@ -169,6 +215,8 @@ public class BoutiqueServiceImpl implements BoutiqueService {
                 .city(boutique.getCity())
                 .phone(boutique.getPhone())
                 .managerName(boutique.getManagerName())
+                .employeeUserId(employeeUserId)
+                .employeeUserName(employeeUserName)
                 .active(boutique.getActive())
                 .createdAt(boutique.getCreatedAt())
                 .build();

@@ -20,5 +20,6 @@ public class CreateBoutiqueRequest {
     private String city;
     private String phone;
     private String managerName;
+    private Long employeeUserId;
     private Boolean active;
 }

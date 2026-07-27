@@ -82,6 +82,9 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
+        Long boutiqueId = user.getBoutique() != null ? user.getBoutique().getId() : null;
+        String boutiqueName = user.getBoutique() != null ? user.getBoutique().getName() : null;
+
         return AuthResponse.builder()
                 .accessToken(token)
                 .userId(user.getId())
@@ -89,6 +92,8 @@ public class AuthServiceImpl implements AuthService {
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
                 .role(user.getRole() != null ? user.getRole().getName() : "ROLE_EMPLOYEE")
+                .boutiqueId(boutiqueId)
+                .boutiqueName(boutiqueName)
                 .build();
     }
 

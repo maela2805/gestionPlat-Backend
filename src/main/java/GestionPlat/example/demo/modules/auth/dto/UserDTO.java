@@ -19,5 +19,7 @@ public class UserDTO {
     private boolean active;
     private String roleName;
     private String roleDescription;
+    private Long boutiqueId;
+    private String boutiqueName;
     private LocalDateTime createdAt;
 }
