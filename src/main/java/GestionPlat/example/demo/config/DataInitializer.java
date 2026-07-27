@@ -27,7 +27,9 @@ public class DataInitializer implements CommandLineRunner {
         try {
             jdbcTemplate.execute("ALTER TABLE products ALTER COLUMN image_url TYPE TEXT;");
             jdbcTemplate.execute("ALTER TABLE products ALTER COLUMN description TYPE TEXT;");
-            log.info("Successfully ensured products table columns image_url and description are TEXT type");
+            jdbcTemplate.execute("ALTER TABLE inventories ALTER COLUMN boutique_id DROP NOT NULL;");
+            jdbcTemplate.execute("ALTER TABLE stock_movements ALTER COLUMN boutique_id DROP NOT NULL;");
+            log.info("Successfully ensured table schema constraints");
         } catch (Exception e) {
             log.warn("Column alter execution notice: {}", e.getMessage());
         }
