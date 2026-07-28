@@ -94,6 +94,7 @@ public class PosSaleServiceImpl implements PosSaleService {
                 .cashSession(session)
                 .boutique(boutique)
                 .client(client)
+                .customClientName(request.getCustomClientName())
                 .saleDate(LocalDateTime.now())
                 .paymentMethod(paymentMethod)
                 .status(PosSaleStatus.PAYEE)
@@ -307,6 +308,13 @@ public class PosSaleServiceImpl implements PosSaleService {
                         .build()
         ).collect(Collectors.toList());
 
+        String resolvedClientName = "Client Passager";
+        if (sale.getClient() != null) {
+            resolvedClientName = sale.getClient().getName();
+        } else if (sale.getCustomClientName() != null && !sale.getCustomClientName().isBlank()) {
+            resolvedClientName = sale.getCustomClientName();
+        }
+
         return PosSaleDTO.builder()
                 .id(sale.getId())
                 .receiptNumber(sale.getReceiptNumber())
@@ -316,7 +324,8 @@ public class PosSaleServiceImpl implements PosSaleService {
                 .boutiqueCode(sale.getBoutique().getCode())
                 .boutiqueName(sale.getBoutique().getName())
                 .clientId(sale.getClient() != null ? sale.getClient().getId() : null)
-                .clientName(sale.getClient() != null ? sale.getClient().getName() : "Client Passager")
+                .customClientName(sale.getCustomClientName())
+                .clientName(resolvedClientName)
                 .saleDate(sale.getSaleDate())
                 .subTotal(sale.getSubTotal())
                 .discountAmount(sale.getDiscountAmount())

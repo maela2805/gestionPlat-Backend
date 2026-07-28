@@ -24,6 +24,7 @@ public class PosSaleDTO {
     private String boutiqueCode;
     private String boutiqueName;
     private Long clientId;
+    private String customClientName;
     private String clientName;
     private LocalDateTime saleDate;
     private BigDecimal subTotal;

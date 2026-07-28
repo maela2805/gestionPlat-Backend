@@ -17,6 +17,7 @@ public class CreatePosSaleRequest {
     private Long boutiqueId;
     private Long cashSessionId;
     private Long clientId;
+    private String customClientName;
     private BigDecimal discountAmount;
     private BigDecimal taxAmount;
     private BigDecimal amountPaid;

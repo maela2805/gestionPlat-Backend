@@ -42,6 +42,9 @@ public class PosSale {
     @JoinColumn(name = "client_id")
     private Tiers client;
 
+    @Column(name = "custom_client_name")
+    private String customClientName;
+
     @Column(name = "sale_date", nullable = false)
     private LocalDateTime saleDate;
 
