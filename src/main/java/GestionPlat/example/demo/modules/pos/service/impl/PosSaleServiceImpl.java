@@ -109,17 +109,25 @@ public class PosSaleServiceImpl implements PosSaleService {
             Product product = productRepository.findById(itemReq.getProductId())
                     .orElseThrow(() -> new RuntimeException("Produit introuvable avec l'ID : " + itemReq.getProductId()));
 
-            // Check Boutique Stock availability
+            // Check Stock availability (Boutique Stock or Product Central Stock)
             BoutiqueStock boutiqueStock = boutiqueStockRepository.findByBoutiqueIdAndProductId(boutique.getId(), product.getId())
-                    .orElseThrow(() -> new RuntimeException("Le produit '" + product.getName() + "' n'est pas disponible dans le stock de la boutique " + boutique.getName()));
+                    .orElse(null);
 
-            if (boutiqueStock.getQuantity() < itemReq.getQuantity()) {
-                throw new RuntimeException("Stock insuffisant en boutique pour '" + product.getName() + "' (Stock disponible : " + boutiqueStock.getQuantity() + ", Demandé : " + itemReq.getQuantity() + ")");
+            int bQty = (boutiqueStock != null && boutiqueStock.getQuantity() != null) ? boutiqueStock.getQuantity() : 0;
+            int pQty = (product.getStock() != null) ? product.getStock() : 0;
+
+            if (bQty >= itemReq.getQuantity() && boutiqueStock != null) {
+                // Deduct from boutique stock
+                boutiqueStock.setQuantity(bQty - itemReq.getQuantity());
+                boutiqueStockRepository.save(boutiqueStock);
+            } else if (pQty >= itemReq.getQuantity()) {
+                // Deduct from central product stock if boutique stock entry not initialized yet
+                product.setStock(pQty - itemReq.getQuantity());
+                productRepository.save(product);
+            } else {
+                int availableMax = Math.max(bQty, pQty);
+                throw new RuntimeException("Stock insuffisant pour '" + product.getName() + "' (Disponible : " + availableMax + ", Quantité demandée : " + itemReq.getQuantity() + ")");
             }
-
-            // Deduct stock from boutique
-            boutiqueStock.setQuantity(boutiqueStock.getQuantity() - itemReq.getQuantity());
-            boutiqueStockRepository.save(boutiqueStock);
 
             // Record Stock Movement
             StockMovement movement = StockMovement.builder()
