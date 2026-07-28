@@ -52,6 +52,9 @@ public class BoutiqueStockServiceImpl implements BoutiqueStockService {
                         .buyPrice(bs.getProduct().getBuyPrice())
                         .sellPrice(bs.getProduct().getSellPrice())
                         .alertThreshold(bs.getProduct().getAlertThreshold())
+                        .categoryId(bs.getProduct().getCategory() != null ? bs.getProduct().getCategory().getId() : null)
+                        .categoryName(bs.getProduct().getCategory() != null ? bs.getProduct().getCategory().getName() : null)
+                        .imageUrl(bs.getProduct().getImageUrl())
                         .build());
             }
         }
@@ -76,6 +79,9 @@ public class BoutiqueStockServiceImpl implements BoutiqueStockService {
                         .buyPrice(bs.getProduct().getBuyPrice())
                         .sellPrice(bs.getProduct().getSellPrice())
                         .alertThreshold(bs.getProduct().getAlertThreshold())
+                        .categoryId(bs.getProduct().getCategory() != null ? bs.getProduct().getCategory().getId() : null)
+                        .categoryName(bs.getProduct().getCategory() != null ? bs.getProduct().getCategory().getName() : null)
+                        .imageUrl(bs.getProduct().getImageUrl())
                         .build());
             }
         }

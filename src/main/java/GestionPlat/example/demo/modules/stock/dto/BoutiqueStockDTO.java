@@ -22,4 +22,7 @@ public class BoutiqueStockDTO {
     private BigDecimal buyPrice;
     private BigDecimal sellPrice;
     private Integer alertThreshold;
+    private Long categoryId;
+    private String categoryName;
+    private String imageUrl;
 }
