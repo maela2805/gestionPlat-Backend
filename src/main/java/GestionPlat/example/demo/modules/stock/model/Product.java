@@ -35,6 +35,12 @@ public class Product {
     @Column(name = "buy_price", nullable = false)
     private BigDecimal buyPrice;
 
+    @Column(name = "wholesale_price")
+    private BigDecimal wholesalePrice;
+
+    @Column(name = "boutique_price")
+    private BigDecimal boutiquePrice;
+
     @Column(name = "sell_price")
     private BigDecimal sellPrice;
 

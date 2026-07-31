@@ -67,12 +67,9 @@ public class ProductServiceImpl implements ProductService {
         }
 
         BigDecimal buyPrice = request.getBuyPrice() != null ? request.getBuyPrice() : BigDecimal.ZERO;
-        BigDecimal sellPrice = request.getSellPrice() != null ? request.getSellPrice() : buyPrice;
-
-        if (request.getSellPrice() != null && request.getBuyPrice() != null && sellPrice.compareTo(buyPrice) < 0) {
-            throw new RuntimeException(
-                    "Règle de gestion : Le prix de vente doit être supérieur ou égal au prix d'achat.");
-        }
+        BigDecimal wholesalePrice = request.getWholesalePrice() != null ? request.getWholesalePrice() : (request.getSellPrice() != null ? request.getSellPrice() : buyPrice);
+        BigDecimal boutiquePrice = request.getBoutiquePrice() != null ? request.getBoutiquePrice() : wholesalePrice;
+        BigDecimal sellPrice = request.getSellPrice() != null ? request.getSellPrice() : boutiquePrice;
 
         Category category = null;
         if (request.getCategoryId() != null) {
@@ -88,6 +85,8 @@ public class ProductServiceImpl implements ProductService {
                 .name(request.getName())
                 .description(request.getDescription())
                 .buyPrice(buyPrice)
+                .wholesalePrice(wholesalePrice)
+                .boutiquePrice(boutiquePrice)
                 .sellPrice(sellPrice)
                 .stock(initialStock)
                 .alertThreshold(request.getAlertThreshold() != null ? request.getAlertThreshold() : 5)
@@ -127,7 +126,9 @@ public class ProductServiceImpl implements ProductService {
         }
 
         BigDecimal buyPrice = request.getBuyPrice() != null ? request.getBuyPrice() : product.getBuyPrice();
-        BigDecimal sellPrice = request.getSellPrice() != null ? request.getSellPrice() : (product.getSellPrice() != null ? product.getSellPrice() : buyPrice);
+        BigDecimal wholesalePrice = request.getWholesalePrice() != null ? request.getWholesalePrice() : (product.getWholesalePrice() != null ? product.getWholesalePrice() : product.getSellPrice());
+        BigDecimal boutiquePrice = request.getBoutiquePrice() != null ? request.getBoutiquePrice() : (product.getBoutiquePrice() != null ? product.getBoutiquePrice() : wholesalePrice);
+        BigDecimal sellPrice = request.getSellPrice() != null ? request.getSellPrice() : (product.getSellPrice() != null ? product.getSellPrice() : boutiquePrice);
 
         if (request.getCategoryId() != null) {
             Category selectedCategory = categoryRepository.findById(request.getCategoryId())
@@ -138,6 +139,8 @@ public class ProductServiceImpl implements ProductService {
         product.setName(request.getName());
         product.setDescription(request.getDescription());
         product.setBuyPrice(buyPrice);
+        product.setWholesalePrice(wholesalePrice);
+        product.setBoutiquePrice(boutiquePrice);
         product.setSellPrice(sellPrice);
         if (request.getAlertThreshold() != null)
             product.setAlertThreshold(request.getAlertThreshold());

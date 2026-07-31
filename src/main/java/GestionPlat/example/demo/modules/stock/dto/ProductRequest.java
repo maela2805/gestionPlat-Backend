@@ -16,6 +16,8 @@ public class ProductRequest {
     private String name;
     private String description;
     private BigDecimal buyPrice;
+    private BigDecimal wholesalePrice;
+    private BigDecimal boutiquePrice;
     private BigDecimal sellPrice;
     private Integer initialStock;
     private Integer alertThreshold;
