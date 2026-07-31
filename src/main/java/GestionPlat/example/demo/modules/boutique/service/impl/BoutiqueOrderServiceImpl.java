@@ -240,6 +240,10 @@ public class BoutiqueOrderServiceImpl implements BoutiqueOrderService {
         BoutiqueOrder order = boutiqueOrderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Commande introuvable avec l'id : " + orderId));
 
+        if (order.getStatus() == BoutiqueOrderStatus.PENDING) {
+            throw new RuntimeException("La commande doit obligatoirement être approuvée avant de pouvoir générer sa facture.");
+        }
+
         if (Boolean.TRUE.equals(order.getInvoiceCreated())) {
             Invoice existing = invoiceRepository.findBySourceBoutiqueOrderId(orderId)
                     .orElse(null);
