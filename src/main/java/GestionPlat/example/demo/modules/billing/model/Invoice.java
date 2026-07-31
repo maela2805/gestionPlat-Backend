@@ -60,6 +60,10 @@ public class Invoice {
     @JoinColumn(name = "source_purchase_order_id")
     private PurchaseOrder sourcePurchaseOrder;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "source_boutique_order_id")
+    private GestionPlat.example.demo.modules.boutique.model.BoutiqueOrder sourceBoutiqueOrder;
+
     @Column(name = "subtotal_ht", nullable = false)
     @Builder.Default
     private BigDecimal subtotalHt = BigDecimal.ZERO;

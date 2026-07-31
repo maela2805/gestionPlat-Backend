@@ -28,6 +28,8 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
 
     List<Invoice> findByBoutiqueId(Long boutiqueId);
 
+    Optional<Invoice> findBySourceBoutiqueOrderId(Long sourceBoutiqueOrderId);
+
     boolean existsByInvoiceNumber(String invoiceNumber);
 
     @Query("SELECT SUM(i.remainingAmount) FROM Invoice i WHERE i.type = :type AND i.status IN ('VALIDEE', 'PAYEE_PARTIEL')")
