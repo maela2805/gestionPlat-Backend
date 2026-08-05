@@ -12,6 +12,7 @@ import GestionPlat.example.demo.modules.auth.model.User;
 import GestionPlat.example.demo.modules.auth.repository.UserRepository;
 import GestionPlat.example.demo.modules.billing.model.Invoice;
 import GestionPlat.example.demo.modules.billing.model.InvoiceStatus;
+import GestionPlat.example.demo.modules.billing.model.InvoiceType;
 import GestionPlat.example.demo.modules.billing.model.Payment;
 import GestionPlat.example.demo.modules.billing.repository.InvoiceRepository;
 import GestionPlat.example.demo.modules.billing.repository.PaymentRepository;
@@ -25,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -110,10 +112,11 @@ public class FundTransferServiceImpl implements FundTransferService {
             log.error("Erreur lors de la génération de l'écriture comptable pour le versement", e);
         }
 
-        // 2. Imputation dynamique du versement sur les factures de cession impayées de la boutique (FIFO)
+        // 2. Imputation dynamique du versement sur les factures impayées de la boutique (FIFO)
         try {
             BigDecimal availableAmount = updated.getAmount();
-            List<Invoice> unpaidInvoices = invoiceRepository.findUnpaidCessionInvoicesByBoutiqueId(updated.getBoutique().getId());
+            List<InvoiceType> types = Arrays.asList(InvoiceType.CESSION_BOUTIQUE, InvoiceType.VENTE);
+            List<Invoice> unpaidInvoices = invoiceRepository.findUnpaidInvoicesByBoutiqueIdAndTypes(updated.getBoutique().getId(), types);
 
             int paymentIdx = 1;
             for (Invoice invoice : unpaidInvoices) {
@@ -232,7 +235,9 @@ public class FundTransferServiceImpl implements FundTransferService {
         Boutique boutique = boutiqueRepository.findById(boutiqueId)
                 .orElseThrow(() -> new RuntimeException("Boutique introuvable"));
 
-        BigDecimal totalCession = invoiceRepository.sumCessionInvoicesTotalTtcByBoutiqueId(boutiqueId);
+        List<InvoiceType> types = Arrays.asList(InvoiceType.CESSION_BOUTIQUE, InvoiceType.VENTE);
+
+        BigDecimal totalCession = invoiceRepository.sumTotalTtcByBoutiqueIdAndTypes(boutiqueId, types);
         if (totalCession == null) totalCession = BigDecimal.ZERO;
 
         BigDecimal totalPaid = fundTransferRepository.sumAmountByBoutiqueIdAndStatus(boutiqueId, FundTransferStatus.APPROVED);
@@ -241,8 +246,10 @@ public class FundTransferServiceImpl implements FundTransferService {
         BigDecimal pendingTransfers = fundTransferRepository.sumAmountByBoutiqueIdAndStatus(boutiqueId, FundTransferStatus.PENDING);
         if (pendingTransfers == null) pendingTransfers = BigDecimal.ZERO;
 
-        BigDecimal balanceDue = invoiceRepository.sumCessionRemainingAmountByBoutiqueId(boutiqueId);
+        BigDecimal balanceDue = invoiceRepository.sumRemainingAmountByBoutiqueIdAndTypes(boutiqueId, types);
         if (balanceDue == null) balanceDue = BigDecimal.ZERO;
+
+        log.info("getBoutiqueWalletSummary for boutiqueId={}: totalCession={}, totalPaid={}, balanceDue={}", boutiqueId, totalCession, totalPaid, balanceDue);
 
         return BoutiqueWalletDTO.builder()
                 .boutiqueId(boutiqueId)

@@ -42,6 +42,16 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import GestionPlat.example.demo.modules.accounting.model.AccountingCategory;
+import GestionPlat.example.demo.modules.accounting.model.AccountingEntry;
+import GestionPlat.example.demo.modules.accounting.model.EntryType;
+import GestionPlat.example.demo.modules.accounting.repository.AccountingEntryRepository;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -60,6 +70,7 @@ public class PosSaleServiceImpl implements PosSaleService {
     private final StockMovementRepository stockMovementRepository;
     private final TiersRepository tiersRepository;
     private final BoutiqueWholesalePriceRepository wholesalePriceRepository;
+    private final AccountingEntryRepository accountingEntryRepository;
 
     @Override
     @Transactional
@@ -209,6 +220,37 @@ public class PosSaleServiceImpl implements PosSaleService {
         sale.setChangeReturned(changeReturned);
 
         PosSale savedSale = posSaleRepository.save(sale);
+
+        // Auto-création d'une écriture comptable en recette pour la vente POS
+        try {
+            String entryCode = "ECR-POS-" + savedSale.getReceiptNumber();
+            String clientName = savedSale.getClient() != null ? savedSale.getClient().getName() : (savedSale.getCustomClientName() != null ? savedSale.getCustomClientName() : "Client Comptant");
+
+            GestionPlat.example.demo.modules.billing.model.PaymentMethod billingPm = GestionPlat.example.demo.modules.billing.model.PaymentMethod.ESPECES;
+            if (paymentMethod != null) {
+                try {
+                    billingPm = GestionPlat.example.demo.modules.billing.model.PaymentMethod.valueOf(paymentMethod.name());
+                } catch (Exception e) {
+                    billingPm = GestionPlat.example.demo.modules.billing.model.PaymentMethod.ESPECES;
+                }
+            }
+
+            AccountingEntry entry = AccountingEntry.builder()
+                    .entryCode(entryCode)
+                    .entryDate(LocalDateTime.now())
+                    .type(EntryType.RECETTE)
+                    .category(AccountingCategory.VENTES_PLATS)
+                    .amount(savedSale.getNetAmount())
+                    .paymentMethod(billingPm)
+                    .description("Vente POS N° " + savedSale.getReceiptNumber() + " (" + boutique.getName() + " - " + clientName + ")")
+                    .sourceCashSession(session)
+                    .tiers(savedSale.getClient())
+                    .build();
+            accountingEntryRepository.save(entry);
+            log.info("Écriture comptable générée pour la vente POS {}", savedSale.getReceiptNumber());
+        } catch (Exception e) {
+            log.error("Erreur lors de la création de l'écriture comptable pour la vente POS", e);
+        }
 
         // Update Cash Session totals
         updateCashSessionTotals(session, paymentMethod, netAmount);
