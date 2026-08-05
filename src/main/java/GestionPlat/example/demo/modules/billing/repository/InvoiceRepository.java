@@ -38,15 +38,15 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     @Query("SELECT SUM(i.totalTtc) FROM Invoice i WHERE i.type = :type AND i.status IN ('VALIDEE', 'PAYEE_PARTIEL', 'PAYEE') AND i.invoiceDate BETWEEN :startDate AND :endDate")
     BigDecimal sumTotalTtcByTypeAndDateRange(@Param("type") InvoiceType type, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-    @Query("SELECT COALESCE(SUM(i.totalTtc), 0) FROM Invoice i WHERE (i.boutique.id = :boutiqueId OR i.sourceBoutiqueOrder.boutique.id = :boutiqueId) AND i.type != 'ACHAT'")
+    @Query(value = "SELECT COALESCE(SUM(i.total_ttc), 0) FROM invoices i LEFT JOIN boutique_orders bo ON bo.id = i.source_boutique_order_id WHERE (i.boutique_id = :boutiqueId OR bo.boutique_id = :boutiqueId) AND (i.type IS NULL OR i.type != 'ACHAT')", nativeQuery = true)
     BigDecimal sumCessionInvoicesTotalTtcByBoutiqueId(@Param("boutiqueId") Long boutiqueId);
 
-    @Query("SELECT i FROM Invoice i WHERE (i.boutique.id = :boutiqueId OR i.sourceBoutiqueOrder.boutique.id = :boutiqueId) AND i.type != 'ACHAT' AND i.remainingAmount > 0 ORDER BY i.invoiceDate ASC")
+    @Query(value = "SELECT i.* FROM invoices i LEFT JOIN boutique_orders bo ON bo.id = i.source_boutique_order_id WHERE (i.boutique_id = :boutiqueId OR bo.boutique_id = :boutiqueId) AND (i.type IS NULL OR i.type != 'ACHAT') AND i.remaining_amount > 0 ORDER BY i.invoice_date ASC", nativeQuery = true)
     List<Invoice> findUnpaidCessionInvoicesByBoutiqueId(@Param("boutiqueId") Long boutiqueId);
 
-    @Query("SELECT COALESCE(SUM(i.remainingAmount), 0) FROM Invoice i WHERE (i.boutique.id = :boutiqueId OR i.sourceBoutiqueOrder.boutique.id = :boutiqueId) AND i.type != 'ACHAT'")
+    @Query(value = "SELECT COALESCE(SUM(i.remaining_amount), 0) FROM invoices i LEFT JOIN boutique_orders bo ON bo.id = i.source_boutique_order_id WHERE (i.boutique_id = :boutiqueId OR bo.boutique_id = :boutiqueId) AND (i.type IS NULL OR i.type != 'ACHAT')", nativeQuery = true)
     BigDecimal sumCessionRemainingAmountByBoutiqueId(@Param("boutiqueId") Long boutiqueId);
 
-    @Query("SELECT COALESCE(SUM(i.remainingAmount), 0) FROM Invoice i WHERE i.type != 'ACHAT'")
+    @Query(value = "SELECT COALESCE(SUM(remaining_amount), 0) FROM invoices WHERE (type IS NULL OR type != 'ACHAT')", nativeQuery = true)
     BigDecimal sumGlobalRemainingAmount();
 }
