@@ -25,7 +25,7 @@ public class FundTransferController {
     private final FundTransferService fundTransferService;
 
     @PostMapping("/transfers")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'EMPLOYEE', 'SUPER_ADMIN_ROLE', 'ADMIN_ROLE', 'MANAGER_ROLE', 'EMPLOYEE_ROLE')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<FundTransferDTO> createFundTransfer(
             @Valid @RequestBody CreateFundTransferRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -34,7 +34,7 @@ public class FundTransferController {
     }
 
     @GetMapping("/transfers")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'EMPLOYEE', 'SUPER_ADMIN_ROLE', 'ADMIN_ROLE', 'MANAGER_ROLE', 'EMPLOYEE_ROLE')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<FundTransferDTO>> getAllFundTransfers(
             @RequestParam(required = false) Long boutiqueId,
             @RequestParam(required = false) FundTransferStatus status) {
@@ -42,13 +42,13 @@ public class FundTransferController {
     }
 
     @GetMapping("/transfers/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'EMPLOYEE', 'SUPER_ADMIN_ROLE', 'ADMIN_ROLE', 'MANAGER_ROLE', 'EMPLOYEE_ROLE')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<FundTransferDTO> getFundTransferById(@PathVariable Long id) {
         return ResponseEntity.ok(fundTransferService.getFundTransferById(id));
     }
 
     @PostMapping("/transfers/{id}/approve")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'SUPER_ADMIN_ROLE', 'ADMIN_ROLE', 'MANAGER_ROLE')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<FundTransferDTO> approveFundTransfer(
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -56,7 +56,7 @@ public class FundTransferController {
     }
 
     @PostMapping("/transfers/{id}/reject")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'SUPER_ADMIN_ROLE', 'ADMIN_ROLE', 'MANAGER_ROLE')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<FundTransferDTO> rejectFundTransfer(
             @PathVariable Long id,
             @RequestBody(required = false) RejectFundTransferRequest request,
@@ -65,7 +65,7 @@ public class FundTransferController {
     }
 
     @PostMapping("/transfers/{id}/cancel")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'EMPLOYEE', 'SUPER_ADMIN_ROLE', 'ADMIN_ROLE', 'MANAGER_ROLE', 'EMPLOYEE_ROLE')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<FundTransferDTO> cancelFundTransfer(
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -73,7 +73,7 @@ public class FundTransferController {
     }
 
     @GetMapping("/wallet/{boutiqueId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'EMPLOYEE', 'SUPER_ADMIN_ROLE', 'ADMIN_ROLE', 'MANAGER_ROLE', 'EMPLOYEE_ROLE')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<BoutiqueWalletDTO> getBoutiqueWalletSummary(@PathVariable Long boutiqueId) {
         return ResponseEntity.ok(fundTransferService.getBoutiqueWalletSummary(boutiqueId));
     }
