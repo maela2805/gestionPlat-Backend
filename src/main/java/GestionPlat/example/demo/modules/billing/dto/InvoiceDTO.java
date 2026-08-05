@@ -36,6 +36,12 @@ public class InvoiceDTO {
     private BigDecimal paidAmount;
     private BigDecimal remainingAmount;
     private String note;
+    private Boolean deliveryConfirmed;
+    private LocalDateTime deliveryDate;
+    private String driverName;
+    private String driverPhone;
+    private String vehicleRegistration;
+    private String attachmentUrl;
     private List<InvoiceItemDTO> items;
     private List<PaymentDTO> payments;
     private LocalDateTime createdAt;

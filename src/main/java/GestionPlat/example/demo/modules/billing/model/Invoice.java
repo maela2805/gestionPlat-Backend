@@ -91,6 +91,25 @@ public class Invoice {
     @Column(columnDefinition = "TEXT")
     private String note;
 
+    @Column(name = "delivery_confirmed")
+    @Builder.Default
+    private Boolean deliveryConfirmed = false;
+
+    @Column(name = "delivery_date")
+    private LocalDateTime deliveryDate;
+
+    @Column(name = "driver_name")
+    private String driverName;
+
+    @Column(name = "driver_phone")
+    private String driverPhone;
+
+    @Column(name = "vehicle_registration")
+    private String vehicleRegistration;
+
+    @Column(name = "attachment_url", columnDefinition = "TEXT")
+    private String attachmentUrl;
+
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<InvoiceItem> items = new ArrayList<>();

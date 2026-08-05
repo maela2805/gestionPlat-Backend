@@ -123,8 +123,11 @@ public class BoutiqueOrderServiceImpl implements BoutiqueOrderService {
         BoutiqueOrder order = boutiqueOrderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Commande introuvable avec l'id : " + id));
 
-        if (order.getStatus() == BoutiqueOrderStatus.APPROVED || order.getStatus() == BoutiqueOrderStatus.DELIVERED) {
-            throw new RuntimeException("Cette commande a déjà été approuvée.");
+        if (order.getStatus() == BoutiqueOrderStatus.APPROVED || order.getStatus() == BoutiqueOrderStatus.MODIFIED_AND_APPROVED || order.getStatus() == BoutiqueOrderStatus.DELIVERED) {
+            try {
+                createInvoiceForOrder(id);
+            } catch (Exception ignored) {}
+            return mapToDTO(order);
         }
 
         boolean isModified = false;
@@ -178,19 +181,15 @@ public class BoutiqueOrderServiceImpl implements BoutiqueOrderService {
 
         order.setStatus(isModified ? BoutiqueOrderStatus.MODIFIED_AND_APPROVED : BoutiqueOrderStatus.APPROVED);
 
-        // Effectuer le transfert de stock réel du Dépôt Central vers la boutique destinataire
-        for (BoutiqueOrderItem item : order.getItems()) {
-            TransferStockRequest stockTransfer = new TransferStockRequest();
-            stockTransfer.setProductId(item.getProduct().getId());
-            stockTransfer.setFromBoutiqueId(null); // Dépôt Central
-            stockTransfer.setToBoutiqueId(order.getBoutique().getId());
-            stockTransfer.setQuantity(item.getQuantity());
-            stockTransfer.setNote("Validation de la commande N° " + order.getOrderNumber());
+        BoutiqueOrder saved = boutiqueOrderRepository.save(order);
 
-            boutiqueStockService.transferStock(stockTransfer, userEmail);
+        // Auto-create Cession Invoice in database invoices table
+        try {
+            createInvoiceForOrder(saved.getId());
+        } catch (Exception e) {
+            // Invoice might already exist or handled
         }
 
-        BoutiqueOrder saved = boutiqueOrderRepository.save(order);
         return mapToDTO(saved);
     }
 
@@ -223,6 +222,24 @@ public class BoutiqueOrderServiceImpl implements BoutiqueOrderService {
 
     @Override
     @Transactional
+    public BoutiqueOrderDTO confirmDelivery(Long id) {
+        BoutiqueOrder order = boutiqueOrderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Commande introuvable avec l'id : " + id));
+
+        order.setStatus(BoutiqueOrderStatus.DELIVERED);
+
+        Invoice invoice = invoiceRepository.findBySourceBoutiqueOrderId(id).orElse(null);
+        if (invoice != null) {
+            invoice.setDeliveryConfirmed(true);
+            invoice.setDeliveryDate(LocalDateTime.now());
+            invoiceRepository.save(invoice);
+        }
+
+        return mapToDTO(boutiqueOrderRepository.save(order));
+    }
+
+    @Override
+    @Transactional
     public void deleteOrder(Long id) {
         BoutiqueOrder order = boutiqueOrderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Commande introuvable avec l'id : " + id));
@@ -236,12 +253,45 @@ public class BoutiqueOrderServiceImpl implements BoutiqueOrderService {
 
     @Override
     @Transactional
+    public BoutiqueOrderDTO updateDeliveryInfo(Long id, ApproveBoutiqueOrderRequest request) {
+        BoutiqueOrder order = boutiqueOrderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Commande introuvable avec l'id : " + id));
+
+        // Mise à jour des infos de livraison sans toucher au statut
+        if (request.getDriverName() != null) {
+            order.setDriverName(request.getDriverName());
+        }
+        if (request.getDriverPhone() != null) {
+            order.setDriverPhone(request.getDriverPhone());
+        }
+        if (request.getVehicleRegistration() != null) {
+            order.setVehicleRegistration(request.getVehicleRegistration());
+        }
+        if (request.getDeliveryDate() != null && !request.getDeliveryDate().isBlank()) {
+            try {
+                order.setDeliveryDate(LocalDateTime.parse(request.getDeliveryDate()));
+            } catch (Exception e) {
+                try {
+                    order.setDeliveryDate(LocalDateTime.parse(request.getDeliveryDate() + "T00:00:00"));
+                } catch (Exception ignored) {}
+            }
+        }
+        if (request.getAttachmentUrl() != null) {
+            order.setAttachmentUrl(request.getAttachmentUrl());
+        }
+
+        return mapToDTO(boutiqueOrderRepository.save(order));
+    }
+
+    @Override
+    @Transactional
     public InvoiceDTO createInvoiceForOrder(Long orderId) {
         BoutiqueOrder order = boutiqueOrderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Commande introuvable avec l'id : " + orderId));
 
         if (order.getStatus() == BoutiqueOrderStatus.PENDING) {
-            throw new RuntimeException("La commande doit obligatoirement être approuvée avant de pouvoir générer sa facture.");
+            order.setStatus(BoutiqueOrderStatus.APPROVED);
+            order = boutiqueOrderRepository.save(order);
         }
 
         if (Boolean.TRUE.equals(order.getInvoiceCreated())) {
@@ -270,6 +320,11 @@ public class BoutiqueOrderServiceImpl implements BoutiqueOrderService {
                 .paidAmount(BigDecimal.ZERO)
                 .remainingAmount(order.getTotalAmount())
                 .note("Facture de cession issue de la commande N° " + order.getOrderNumber())
+                .deliveryDate(order.getDeliveryDate())
+                .driverName(order.getDriverName())
+                .driverPhone(order.getDriverPhone())
+                .vehicleRegistration(order.getVehicleRegistration())
+                .attachmentUrl(order.getAttachmentUrl())
                 .items(new ArrayList<>())
                 .build();
 
@@ -294,7 +349,9 @@ public class BoutiqueOrderServiceImpl implements BoutiqueOrderService {
     }
 
     private BoutiqueOrderDTO mapToDTO(BoutiqueOrder order) {
-        Invoice invoice = invoiceRepository.findBySourceBoutiqueOrderId(order.getId()).orElse(null);
+        Invoice invoice = Boolean.TRUE.equals(order.getInvoiceCreated())
+                ? invoiceRepository.findBySourceBoutiqueOrderId(order.getId()).orElse(null)
+                : null;
 
         List<BoutiqueOrderItemDTO> itemDTOs = order.getItems().stream()
                 .map(i -> BoutiqueOrderItemDTO.builder()
@@ -309,6 +366,15 @@ public class BoutiqueOrderServiceImpl implements BoutiqueOrderService {
                         .build())
                 .collect(Collectors.toList());
 
+        String driverName = (order.getDriverName() != null && !order.getDriverName().isBlank())
+                ? order.getDriverName() : (invoice != null ? invoice.getDriverName() : null);
+        String driverPhone = (order.getDriverPhone() != null && !order.getDriverPhone().isBlank())
+                ? order.getDriverPhone() : (invoice != null ? invoice.getDriverPhone() : null);
+        String vehicleRegistration = (order.getVehicleRegistration() != null && !order.getVehicleRegistration().isBlank())
+                ? order.getVehicleRegistration() : (invoice != null ? invoice.getVehicleRegistration() : null);
+        LocalDateTime deliveryDate = order.getDeliveryDate() != null
+                ? order.getDeliveryDate() : (invoice != null ? invoice.getDeliveryDate() : null);
+
         return BoutiqueOrderDTO.builder()
                 .id(order.getId())
                 .orderNumber(order.getOrderNumber())
@@ -317,11 +383,11 @@ public class BoutiqueOrderServiceImpl implements BoutiqueOrderService {
                 .orderDate(order.getOrderDate())
                 .status(order.getStatus())
                 .totalAmount(order.getTotalAmount())
-                .deliveryDate(order.getDeliveryDate())
-                .vehicleRegistration(order.getVehicleRegistration())
-                .driverName(order.getDriverName())
-                .driverPhone(order.getDriverPhone())
-                .attachmentUrl(order.getAttachmentUrl())
+                .deliveryDate(deliveryDate)
+                .vehicleRegistration(vehicleRegistration)
+                .driverName(driverName)
+                .driverPhone(driverPhone)
+                .attachmentUrl(order.getAttachmentUrl() != null ? order.getAttachmentUrl() : (invoice != null ? invoice.getAttachmentUrl() : null))
                 .boutiqueSignature(order.getBoutiqueSignature())
                 .depotSignature(order.getDepotSignature())
                 .invoiceCreated(order.getInvoiceCreated())

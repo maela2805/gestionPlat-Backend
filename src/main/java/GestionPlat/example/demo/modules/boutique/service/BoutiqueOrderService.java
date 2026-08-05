@@ -15,6 +15,8 @@ public interface BoutiqueOrderService {
     BoutiqueOrderDTO approveOrder(Long id, ApproveBoutiqueOrderRequest request, String userEmail);
     BoutiqueOrderDTO rejectOrder(Long id, String reason);
     BoutiqueOrderDTO cancelOrder(Long id);
+    BoutiqueOrderDTO confirmDelivery(Long id);
+    BoutiqueOrderDTO updateDeliveryInfo(Long id, ApproveBoutiqueOrderRequest request);
     void deleteOrder(Long id);
     InvoiceDTO createInvoiceForOrder(Long orderId);
 }

@@ -27,8 +27,12 @@ import GestionPlat.example.demo.modules.stock.repository.BoutiqueStockRepository
 import GestionPlat.example.demo.modules.stock.repository.ProductRepository;
 import GestionPlat.example.demo.modules.stock.repository.StockMovementRepository;
 import GestionPlat.example.demo.modules.tiers.model.Tiers;
+import GestionPlat.example.demo.modules.tiers.model.TiersStatus;
+import GestionPlat.example.demo.modules.tiers.model.TiersType;
 import GestionPlat.example.demo.modules.tiers.repository.TiersRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,6 +48,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class PosSaleServiceImpl implements PosSaleService {
+
+    private static final Logger log = LoggerFactory.getLogger(PosSaleServiceImpl.class);
 
     private final PosSaleRepository posSaleRepository;
     private final CashSessionRepository cashSessionRepository;
@@ -80,8 +86,29 @@ public class PosSaleServiceImpl implements PosSaleService {
         }
 
         Tiers client = null;
+        log.info("[POS] saveClient={}, customClientName='{}'", request.getSaveClient(), request.getCustomClientName());
         if (request.getClientId() != null) {
             client = tiersRepository.findById(request.getClientId()).orElse(null);
+            log.info("[POS] Client existant trouvé: {}", client != null ? client.getName() : "introuvable");
+        } else if (Boolean.TRUE.equals(request.getSaveClient())
+                && request.getCustomClientName() != null
+                && !request.getCustomClientName().isBlank()) {
+            // Créer un nouveau Tiers CLIENT complet en base
+            String clientCode = "CLI-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+            log.info("[POS] Création du Tiers CLIENT avec code={}, name='{}'", clientCode, request.getCustomClientName());
+            Tiers newClient = Tiers.builder()
+                    .code(clientCode)
+                    .name(request.getCustomClientName().trim())
+                    .phone(request.getCustomClientPhone() != null ? request.getCustomClientPhone().trim() : null)
+                    .email(request.getCustomClientEmail() != null ? request.getCustomClientEmail().trim() : null)
+                    .address(request.getCustomClientAddress() != null ? request.getCustomClientAddress().trim() : null)
+                    .city(request.getCustomClientCity() != null ? request.getCustomClientCity().trim() : null)
+                    .type(TiersType.CLIENT)
+                    .status(TiersStatus.ACTIF)
+                    .note("Client enregistré depuis la caisse POS par " + userEmail)
+                    .build();
+            client = tiersRepository.save(newClient);
+            log.info("[POS] Tiers CLIENT créé avec succès, ID={}", client.getId());
         }
 
         String datePrefix = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));

@@ -73,12 +73,26 @@ public class BoutiqueOrderController {
         return ResponseEntity.ok(boutiqueOrderService.cancelOrder(id));
     }
 
+    @Operation(summary = "Confirmer la réception de la livraison d'une commande inter-boutique")
+    @PutMapping("/{id}/confirm-delivery")
+    public ResponseEntity<BoutiqueOrderDTO> confirmDelivery(@PathVariable Long id) {
+        return ResponseEntity.ok(boutiqueOrderService.confirmDelivery(id));
+    }
+
     @Operation(summary = "Supprimer une commande inter-boutique (ADMIN)")
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'SUPER_ADMIN', 'ROLE_ADMIN', 'ADMIN')")
     public ResponseEntity<Void> deleteOrder(@PathVariable Long id) {
         boutiqueOrderService.deleteOrder(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Mettre à jour les infos de livraison d'une commande (chauffeur, véhicule) sans changer le statut")
+    @PutMapping("/{id}/update-delivery-info")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'SUPER_ADMIN', 'ROLE_ADMIN', 'ADMIN', 'ROLE_MANAGER', 'MANAGER', 'WRITE_STOCK')")
+    public ResponseEntity<BoutiqueOrderDTO> updateDeliveryInfo(@PathVariable Long id,
+                                                               @RequestBody ApproveBoutiqueOrderRequest request) {
+        return ResponseEntity.ok(boutiqueOrderService.updateDeliveryInfo(id, request));
     }
 
     @Operation(summary = "Générer la facture et le bon de livraison pour une commande")

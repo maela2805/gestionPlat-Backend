@@ -18,6 +18,11 @@ public class CreatePosSaleRequest {
     private Long cashSessionId;
     private Long clientId;
     private String customClientName;
+    private String customClientPhone;
+    private String customClientEmail;
+    private String customClientAddress;
+    private String customClientCity;
+    private Boolean saveClient; // Si true, crée un Tiers CLIENT en base avec les infos saisies
     private BigDecimal discountAmount;
     private BigDecimal taxAmount;
     private BigDecimal amountPaid;

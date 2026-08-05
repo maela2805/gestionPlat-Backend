@@ -16,6 +16,10 @@ import GestionPlat.example.demo.modules.sale.model.StoreSaleItem;
 import GestionPlat.example.demo.modules.sale.repository.StoreSaleRepository;
 import GestionPlat.example.demo.modules.tiers.model.Tiers;
 import GestionPlat.example.demo.modules.tiers.repository.TiersRepository;
+import GestionPlat.example.demo.modules.stock.dto.TransferStockRequest;
+import GestionPlat.example.demo.modules.stock.service.BoutiqueStockService;
+import GestionPlat.example.demo.modules.boutique.model.BoutiqueOrder;
+import GestionPlat.example.demo.modules.boutique.model.BoutiqueOrderItem;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +42,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     private final StoreSaleRepository storeSaleRepository;
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final AccountingService accountingService;
+    private final BoutiqueStockService boutiqueStockService;
 
     @Override
     @Transactional(readOnly = true)
@@ -53,7 +58,16 @@ public class InvoiceServiceImpl implements InvoiceService {
             list = invoiceRepository.findAll();
         }
         return list.stream()
-                .sorted(Comparator.comparing(Invoice::getInvoiceDate).reversed())
+                .sorted((a, b) -> {
+                    LocalDateTime dateA = a.getInvoiceDate() != null ? a.getInvoiceDate() : a.getCreatedAt();
+                    LocalDateTime dateB = b.getInvoiceDate() != null ? b.getInvoiceDate() : b.getCreatedAt();
+                    if (dateA == null && dateB == null) {
+                        return Long.compare(b.getId() != null ? b.getId() : 0, a.getId() != null ? a.getId() : 0);
+                    }
+                    if (dateA == null) return 1;
+                    if (dateB == null) return -1;
+                    return dateB.compareTo(dateA);
+                })
                 .map(this::mapToDTO)
                 .toList();
     }
@@ -83,12 +97,13 @@ public class InvoiceServiceImpl implements InvoiceService {
         }
 
         BigDecimal taxRate = request.getTaxRate() != null ? request.getTaxRate() : BigDecimal.ZERO;
+        LocalDateTime invDate = request.getInvoiceDate() != null ? request.getInvoiceDate() : LocalDateTime.now();
 
         Invoice invoice = Invoice.builder()
                 .invoiceNumber(number)
                 .type(request.getType())
                 .status(InvoiceStatus.BROUILLON)
-                .invoiceDate(request.getInvoiceDate() != null ? request.getInvoiceDate() : LocalDateTime.now())
+                .invoiceDate(invDate)
                 .dueDate(request.getDueDate())
                 .tiers(tiers)
                 .boutique(boutique)
@@ -166,9 +181,9 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .taxRate(BigDecimal.ZERO)
                 .taxAmount(BigDecimal.ZERO)
                 .totalTtc(sale.getTotalAmount())
-                .paidAmount(sale.getTotalAmount())
-                .remainingAmount(BigDecimal.ZERO)
-                .status(InvoiceStatus.PAYEE)
+                .paidAmount(BigDecimal.ZERO)
+                .remainingAmount(sale.getTotalAmount())
+                .status(InvoiceStatus.VALIDEE)
                 .note("Générée automatiquement depuis la vente " + sale.getReference())
                 .items(new ArrayList<>())
                 .payments(new ArrayList<>())
@@ -333,6 +348,143 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .toList();
     }
 
+    @Override
+    @Transactional
+    public InvoiceDTO confirmDelivery(Long id) {
+        Invoice invoice = invoiceRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Facture introuvable avec l'ID : " + id));
+
+        if (Boolean.TRUE.equals(invoice.getDeliveryConfirmed())) {
+            return mapToDTO(invoice);
+        }
+
+        invoice.setDeliveryConfirmed(true);
+        invoice.setDeliveryDate(LocalDateTime.now());
+
+        if (invoice.getSourceBoutiqueOrder() != null) {
+            BoutiqueOrder order = invoice.getSourceBoutiqueOrder();
+            order.setStatus(GestionPlat.example.demo.modules.boutique.model.BoutiqueOrderStatus.DELIVERED);
+
+            // Effectuer le transfert de stock réel lors de la confirmation de livraison
+            if (order.getItems() != null && order.getBoutique() != null) {
+                for (BoutiqueOrderItem item : order.getItems()) {
+                    if (item.getProduct() != null && item.getQuantity() != null && item.getQuantity() > 0) {
+                        TransferStockRequest stockTransfer = new TransferStockRequest();
+                        stockTransfer.setProductId(item.getProduct().getId());
+                        stockTransfer.setFromBoutiqueId(null); // Dépôt Central
+                        stockTransfer.setToBoutiqueId(order.getBoutique().getId());
+                        stockTransfer.setQuantity(item.getQuantity());
+                        stockTransfer.setNote("Livraison confirmée pour la facture N° " + invoice.getInvoiceNumber());
+
+                        boutiqueStockService.transferStock(stockTransfer, "System");
+                    }
+                }
+            }
+        }
+
+        return mapToDTO(invoiceRepository.save(invoice));
+    }
+
+    @Override
+    @Transactional
+    public InvoiceDTO updateInvoice(Long id, UpdateInvoiceRequest request) {
+        Invoice invoice = invoiceRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Facture introuvable avec l'ID : " + id));
+
+        if (request.getNote() != null) {
+            invoice.setNote(request.getNote());
+        }
+        if (request.getDueDate() != null) {
+            invoice.setDueDate(request.getDueDate());
+        }
+        if (request.getInvoiceDate() != null) {
+            invoice.setInvoiceDate(request.getInvoiceDate());
+        }
+        if (request.getTaxRate() != null) {
+            invoice.setTaxRate(request.getTaxRate());
+        }
+        if (request.getTiersId() != null) {
+            Tiers tiers = tiersRepository.findById(request.getTiersId()).orElse(null);
+            invoice.setTiers(tiers);
+        }
+        if (request.getPaidAmount() != null) {
+            invoice.setPaidAmount(request.getPaidAmount());
+        }
+        if (request.getStatus() != null) {
+            invoice.setStatus(request.getStatus());
+        }
+        if (request.getDeliveryDate() != null) {
+            invoice.setDeliveryDate(request.getDeliveryDate());
+        }
+        if (request.getDriverName() != null) {
+            invoice.setDriverName(request.getDriverName());
+        }
+        if (request.getDriverPhone() != null) {
+            invoice.setDriverPhone(request.getDriverPhone());
+        }
+        if (request.getVehicleRegistration() != null) {
+            invoice.setVehicleRegistration(request.getVehicleRegistration());
+        }
+        if (request.getAttachmentUrl() != null) {
+            invoice.setAttachmentUrl(request.getAttachmentUrl());
+        }
+
+        if (request.getItems() != null && !request.getItems().isEmpty()) {
+            invoice.getItems().clear();
+            BigDecimal subtotal = BigDecimal.ZERO;
+            BigDecimal taxRate = invoice.getTaxRate() != null ? invoice.getTaxRate() : BigDecimal.ZERO;
+
+            for (CreateInvoiceItemRequest itemReq : request.getItems()) {
+                BigDecimal qty = itemReq.getQuantity() != null ? itemReq.getQuantity() : BigDecimal.ONE;
+                BigDecimal unitPrice = itemReq.getUnitPriceHt() != null ? itemReq.getUnitPriceHt() : BigDecimal.ZERO;
+                BigDecimal itemTaxRate = itemReq.getTaxRate() != null ? itemReq.getTaxRate() : taxRate;
+
+                BigDecimal totalHt = qty.multiply(unitPrice).setScale(2, RoundingMode.HALF_UP);
+                BigDecimal tax = totalHt.multiply(itemTaxRate).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                BigDecimal totalTtc = totalHt.add(tax);
+
+                subtotal = subtotal.add(totalHt);
+
+                InvoiceItem item = InvoiceItem.builder()
+                        .invoice(invoice)
+                        .description(itemReq.getDescription())
+                        .quantity(qty)
+                        .unitPriceHt(unitPrice)
+                        .taxRate(itemTaxRate)
+                        .totalHt(totalHt)
+                        .totalTtc(totalTtc)
+                        .build();
+
+                invoice.getItems().add(item);
+            }
+
+            BigDecimal taxAmount = subtotal.multiply(taxRate).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+            BigDecimal totalTtc = subtotal.add(taxAmount);
+
+            invoice.setSubtotalHt(subtotal);
+            invoice.setTaxAmount(taxAmount);
+            invoice.setTotalTtc(totalTtc);
+        }
+
+        BigDecimal totalTtc = invoice.getTotalTtc() != null ? invoice.getTotalTtc() : BigDecimal.ZERO;
+        BigDecimal paid = invoice.getPaidAmount() != null ? invoice.getPaidAmount() : BigDecimal.ZERO;
+        BigDecimal remaining = totalTtc.subtract(paid);
+        if (remaining.compareTo(BigDecimal.ZERO) < 0) remaining = BigDecimal.ZERO;
+        invoice.setRemainingAmount(remaining);
+
+        if (request.getStatus() == null) {
+            if (paid.compareTo(BigDecimal.ZERO) == 0) {
+                invoice.setStatus(InvoiceStatus.VALIDEE);
+            } else if (remaining.compareTo(BigDecimal.ZERO) == 0) {
+                invoice.setStatus(InvoiceStatus.PAYEE);
+            } else {
+                invoice.setStatus(InvoiceStatus.PAYEE_PARTIEL);
+            }
+        }
+
+        return mapToDTO(invoiceRepository.save(invoice));
+    }
+
     private InvoiceDTO mapToDTO(Invoice invoice) {
         List<InvoiceItemDTO> itemDTOs = invoice.getItems() != null ? invoice.getItems().stream().map(this::mapToItemDTO).toList() : List.of();
         List<PaymentDTO> paymentDTOs = invoice.getPayments() != null ? invoice.getPayments().stream().map(this::mapToPaymentDTO).toList() : List.of();
@@ -358,6 +510,12 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .paidAmount(invoice.getPaidAmount())
                 .remainingAmount(invoice.getRemainingAmount())
                 .note(invoice.getNote())
+                .deliveryConfirmed(invoice.getDeliveryConfirmed())
+                .deliveryDate(invoice.getDeliveryDate())
+                .driverName(invoice.getDriverName())
+                .driverPhone(invoice.getDriverPhone())
+                .vehicleRegistration(invoice.getVehicleRegistration())
+                .attachmentUrl(invoice.getAttachmentUrl())
                 .items(itemDTOs)
                 .payments(paymentDTOs)
                 .createdAt(invoice.getCreatedAt())

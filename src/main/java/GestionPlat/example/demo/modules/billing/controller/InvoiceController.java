@@ -56,6 +56,16 @@ public class InvoiceController {
         return ResponseEntity.ok(invoiceService.cancelInvoice(id));
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<InvoiceDTO> updateInvoice(@PathVariable Long id, @RequestBody UpdateInvoiceRequest request) {
+        return ResponseEntity.ok(invoiceService.updateInvoice(id, request));
+    }
+
+    @PutMapping("/{id}/confirm-delivery")
+    public ResponseEntity<InvoiceDTO> confirmDelivery(@PathVariable Long id) {
+        return ResponseEntity.ok(invoiceService.confirmDelivery(id));
+    }
+
     @PostMapping("/payments")
     public ResponseEntity<PaymentDTO> addPayment(@Valid @RequestBody CreatePaymentRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(invoiceService.addPayment(request));

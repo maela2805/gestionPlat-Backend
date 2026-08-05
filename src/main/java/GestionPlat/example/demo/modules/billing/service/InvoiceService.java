@@ -22,6 +22,10 @@ public interface InvoiceService {
 
     InvoiceDTO cancelInvoice(Long id);
 
+    InvoiceDTO updateInvoice(Long id, UpdateInvoiceRequest request);
+
+    InvoiceDTO confirmDelivery(Long id);
+
     PaymentDTO addPayment(CreatePaymentRequest request);
 
     List<PaymentDTO> getPaymentsByInvoiceId(Long invoiceId);

@@ -40,7 +40,7 @@ public class TiersController {
 
     @Operation(summary = "Créer un nouveau tiers")
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'WRITE_STOCK')")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_EMPLOYEE', 'EMPLOYEE', 'WRITE_STOCK')")
     public ResponseEntity<TiersDTO> createTiers(@Valid @RequestBody CreateTiersRequest request) {
         return ResponseEntity.ok(tiersService.createTiers(request));
     }
