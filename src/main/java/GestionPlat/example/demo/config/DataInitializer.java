@@ -35,6 +35,9 @@ public class DataInitializer implements CommandLineRunner {
             jdbcTemplate.execute("ALTER TABLE invoices ADD COLUMN IF NOT EXISTS driver_phone VARCHAR(255);");
             jdbcTemplate.execute("ALTER TABLE invoices ADD COLUMN IF NOT EXISTS vehicle_registration VARCHAR(255);");
             jdbcTemplate.execute("ALTER TABLE invoices ADD COLUMN IF NOT EXISTS attachment_url TEXT;");
+            // Ensure StockReturn media_url and description are TEXT for large payloads
+            jdbcTemplate.execute("ALTER TABLE stock_return_media ALTER COLUMN media_url TYPE TEXT;");
+            jdbcTemplate.execute("ALTER TABLE stock_returns ALTER COLUMN description TYPE TEXT;");
             log.info("Successfully ensured table schema constraints");
         } catch (Exception e) {
             log.warn("Column alter execution notice: {}", e.getMessage());
