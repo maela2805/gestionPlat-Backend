@@ -115,8 +115,7 @@ public class FundTransferServiceImpl implements FundTransferService {
         // 2. Imputation dynamique du versement sur les factures impayées de la boutique (FIFO)
         try {
             BigDecimal availableAmount = updated.getAmount();
-            List<InvoiceType> types = Arrays.asList(InvoiceType.CESSION_BOUTIQUE, InvoiceType.VENTE);
-            List<Invoice> unpaidInvoices = invoiceRepository.findUnpaidInvoicesByBoutiqueIdAndTypes(updated.getBoutique().getId(), types);
+            List<Invoice> unpaidInvoices = invoiceRepository.findUnpaidCessionInvoicesByBoutiqueId(updated.getBoutique().getId());
 
             int paymentIdx = 1;
             for (Invoice invoice : unpaidInvoices) {
@@ -235,9 +234,7 @@ public class FundTransferServiceImpl implements FundTransferService {
         Boutique boutique = boutiqueRepository.findById(boutiqueId)
                 .orElseThrow(() -> new RuntimeException("Boutique introuvable"));
 
-        List<InvoiceType> types = Arrays.asList(InvoiceType.CESSION_BOUTIQUE, InvoiceType.VENTE);
-
-        BigDecimal totalCession = invoiceRepository.sumTotalTtcByBoutiqueIdAndTypes(boutiqueId, types);
+        BigDecimal totalCession = invoiceRepository.sumCessionInvoicesTotalTtcByBoutiqueId(boutiqueId);
         if (totalCession == null) totalCession = BigDecimal.ZERO;
 
         BigDecimal totalPaid = fundTransferRepository.sumAmountByBoutiqueIdAndStatus(boutiqueId, FundTransferStatus.APPROVED);
@@ -246,7 +243,7 @@ public class FundTransferServiceImpl implements FundTransferService {
         BigDecimal pendingTransfers = fundTransferRepository.sumAmountByBoutiqueIdAndStatus(boutiqueId, FundTransferStatus.PENDING);
         if (pendingTransfers == null) pendingTransfers = BigDecimal.ZERO;
 
-        BigDecimal balanceDue = invoiceRepository.sumRemainingAmountByBoutiqueIdAndTypes(boutiqueId, types);
+        BigDecimal balanceDue = invoiceRepository.sumCessionRemainingAmountByBoutiqueId(boutiqueId);
         if (balanceDue == null) balanceDue = BigDecimal.ZERO;
 
         log.info("getBoutiqueWalletSummary for boutiqueId={}: totalCession={}, totalPaid={}, balanceDue={}", boutiqueId, totalCession, totalPaid, balanceDue);
