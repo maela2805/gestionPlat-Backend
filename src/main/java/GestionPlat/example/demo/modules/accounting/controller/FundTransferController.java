@@ -73,7 +73,7 @@ public class FundTransferController {
     }
 
     @GetMapping("/wallet/{boutiqueId}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<BoutiqueWalletDTO> getBoutiqueWalletSummary(@PathVariable Long boutiqueId) {
         return ResponseEntity.ok(fundTransferService.getBoutiqueWalletSummary(boutiqueId));
     }
