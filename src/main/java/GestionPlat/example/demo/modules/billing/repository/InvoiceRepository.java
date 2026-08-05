@@ -38,12 +38,12 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     @Query("SELECT SUM(i.totalTtc) FROM Invoice i WHERE i.type = :type AND i.status IN ('VALIDEE', 'PAYEE_PARTIEL', 'PAYEE') AND i.invoiceDate BETWEEN :startDate AND :endDate")
     BigDecimal sumTotalTtcByTypeAndDateRange(@Param("type") InvoiceType type, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-    @Query("SELECT COALESCE(SUM(i.totalTtc), 0) FROM Invoice i WHERE i.boutique.id = :boutiqueId AND i.type = 'CESSION'")
+    @Query("SELECT COALESCE(SUM(i.totalTtc), 0) FROM Invoice i WHERE i.boutique.id = :boutiqueId AND i.type = GestionPlat.example.demo.modules.billing.model.InvoiceType.CESSION_BOUTIQUE")
     BigDecimal sumCessionInvoicesTotalTtcByBoutiqueId(@Param("boutiqueId") Long boutiqueId);
 
-    @Query("SELECT i FROM Invoice i WHERE i.boutique.id = :boutiqueId AND i.type = 'CESSION' AND i.remainingAmount > 0 ORDER BY i.invoiceDate ASC")
+    @Query("SELECT i FROM Invoice i WHERE i.boutique.id = :boutiqueId AND i.type = GestionPlat.example.demo.modules.billing.model.InvoiceType.CESSION_BOUTIQUE AND i.remainingAmount > 0 ORDER BY i.invoiceDate ASC")
     List<Invoice> findUnpaidCessionInvoicesByBoutiqueId(@Param("boutiqueId") Long boutiqueId);
 
-    @Query("SELECT COALESCE(SUM(i.remainingAmount), 0) FROM Invoice i WHERE i.boutique.id = :boutiqueId AND i.type = 'CESSION'")
+    @Query("SELECT COALESCE(SUM(i.remainingAmount), 0) FROM Invoice i WHERE i.boutique.id = :boutiqueId AND i.type = GestionPlat.example.demo.modules.billing.model.InvoiceType.CESSION_BOUTIQUE")
     BigDecimal sumCessionRemainingAmountByBoutiqueId(@Param("boutiqueId") Long boutiqueId);
 }
