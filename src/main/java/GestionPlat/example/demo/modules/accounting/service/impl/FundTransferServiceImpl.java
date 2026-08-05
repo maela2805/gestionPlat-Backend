@@ -10,7 +10,11 @@ import GestionPlat.example.demo.modules.accounting.repository.FundTransferReposi
 import GestionPlat.example.demo.modules.accounting.service.FundTransferService;
 import GestionPlat.example.demo.modules.auth.model.User;
 import GestionPlat.example.demo.modules.auth.repository.UserRepository;
+import GestionPlat.example.demo.modules.billing.model.Invoice;
+import GestionPlat.example.demo.modules.billing.model.InvoiceStatus;
+import GestionPlat.example.demo.modules.billing.model.Payment;
 import GestionPlat.example.demo.modules.billing.repository.InvoiceRepository;
+import GestionPlat.example.demo.modules.billing.repository.PaymentRepository;
 import GestionPlat.example.demo.modules.boutique.model.Boutique;
 import GestionPlat.example.demo.modules.boutique.repository.BoutiqueRepository;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +38,7 @@ public class FundTransferServiceImpl implements FundTransferService {
     private final BoutiqueRepository boutiqueRepository;
     private final UserRepository userRepository;
     private final InvoiceRepository invoiceRepository;
+    private final PaymentRepository paymentRepository;
     private final AccountingEntryRepository accountingEntryRepository;
 
     @Override
@@ -87,7 +92,7 @@ public class FundTransferServiceImpl implements FundTransferService {
         transfer.setApprovedByEmail(userEmail);
         FundTransfer updated = fundTransferRepository.save(transfer);
 
-        // Auto-création d'une entrée comptable en recette
+        // 1. Auto-création d'une entrée comptable en recette
         try {
             String entryCode = "ENT-TRF-" + updated.getId() + "-" + System.currentTimeMillis() % 100000;
             AccountingEntry entry = AccountingEntry.builder()
@@ -103,6 +108,57 @@ public class FundTransferServiceImpl implements FundTransferService {
             log.info("Écriture comptable générée pour le versement {}", updated.getReference());
         } catch (Exception e) {
             log.error("Erreur lors de la génération de l'écriture comptable pour le versement", e);
+        }
+
+        // 2. Imputation dynamique du versement sur les factures de cession impayées de la boutique (FIFO)
+        try {
+            BigDecimal availableAmount = updated.getAmount();
+            List<Invoice> unpaidInvoices = invoiceRepository.findUnpaidCessionInvoicesByBoutiqueId(updated.getBoutique().getId());
+
+            int paymentIdx = 1;
+            for (Invoice invoice : unpaidInvoices) {
+                if (availableAmount.compareTo(BigDecimal.ZERO) <= 0) {
+                    break;
+                }
+
+                BigDecimal invoiceRemaining = invoice.getRemainingAmount();
+                BigDecimal allocatedAmount = availableAmount.min(invoiceRemaining);
+
+                BigDecimal newPaidAmount = (invoice.getPaidAmount() != null ? invoice.getPaidAmount() : BigDecimal.ZERO).add(allocatedAmount);
+                BigDecimal newRemaining = invoice.getTotalTtc().subtract(newPaidAmount);
+                if (newRemaining.compareTo(BigDecimal.ZERO) < 0) {
+                    newRemaining = BigDecimal.ZERO;
+                }
+
+                invoice.setPaidAmount(newPaidAmount);
+                invoice.setRemainingAmount(newRemaining);
+
+                if (newRemaining.compareTo(BigDecimal.ZERO) == 0) {
+                    invoice.setStatus(InvoiceStatus.PAYEE);
+                } else if (newPaidAmount.compareTo(BigDecimal.ZERO) > 0) {
+                    invoice.setStatus(InvoiceStatus.PAYEE_PARTIEL);
+                }
+
+                // Enregistrement du règlement lié à la facture
+                Payment payment = Payment.builder()
+                        .paymentNumber("PAY-TRF-" + updated.getId() + "-" + paymentIdx++)
+                        .invoice(invoice)
+                        .tiers(invoice.getTiers())
+                        .paymentDate(LocalDateTime.now())
+                        .amount(allocatedAmount)
+                        .paymentMethod(updated.getPaymentMethod())
+                        .reference(updated.getReference())
+                        .note("Règlement versement de fonds boutique " + updated.getBoutique().getName() + " (Réf: " + updated.getReference() + ")")
+                        .build();
+
+                paymentRepository.save(payment);
+                invoiceRepository.save(invoice);
+
+                availableAmount = availableAmount.subtract(allocatedAmount);
+                log.info("Versement {} de {} FCFA alloué sur la facture {}", updated.getReference(), allocatedAmount, invoice.getInvoiceNumber());
+            }
+        } catch (Exception e) {
+            log.error("Erreur lors de l'imputation du versement sur les factures de cession", e);
         }
 
         return mapToDTO(updated);
@@ -185,10 +241,8 @@ public class FundTransferServiceImpl implements FundTransferService {
         BigDecimal pendingTransfers = fundTransferRepository.sumAmountByBoutiqueIdAndStatus(boutiqueId, FundTransferStatus.PENDING);
         if (pendingTransfers == null) pendingTransfers = BigDecimal.ZERO;
 
-        BigDecimal balanceDue = totalCession.subtract(totalPaid);
-        if (balanceDue.compareTo(BigDecimal.ZERO) < 0) {
-            balanceDue = BigDecimal.ZERO;
-        }
+        BigDecimal balanceDue = invoiceRepository.sumCessionRemainingAmountByBoutiqueId(boutiqueId);
+        if (balanceDue == null) balanceDue = BigDecimal.ZERO;
 
         return BoutiqueWalletDTO.builder()
                 .boutiqueId(boutiqueId)

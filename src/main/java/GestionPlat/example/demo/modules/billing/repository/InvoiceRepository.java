@@ -40,4 +40,10 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
 
     @Query("SELECT COALESCE(SUM(i.totalTtc), 0) FROM Invoice i WHERE i.boutique.id = :boutiqueId AND i.type = 'CESSION'")
     BigDecimal sumCessionInvoicesTotalTtcByBoutiqueId(@Param("boutiqueId") Long boutiqueId);
+
+    @Query("SELECT i FROM Invoice i WHERE i.boutique.id = :boutiqueId AND i.type = 'CESSION' AND i.remainingAmount > 0 ORDER BY i.invoiceDate ASC")
+    List<Invoice> findUnpaidCessionInvoicesByBoutiqueId(@Param("boutiqueId") Long boutiqueId);
+
+    @Query("SELECT COALESCE(SUM(i.remainingAmount), 0) FROM Invoice i WHERE i.boutique.id = :boutiqueId AND i.type = 'CESSION'")
+    BigDecimal sumCessionRemainingAmountByBoutiqueId(@Param("boutiqueId") Long boutiqueId);
 }
