@@ -55,7 +55,7 @@ public class StockReturn {
 
     @ElementCollection
     @CollectionTable(name = "stock_return_media", joinColumns = @JoinColumn(name = "stock_return_id"))
-    @Column(name = "media_url", length = 500)
+    @Column(name = "media_url", columnDefinition = "TEXT")
     @Builder.Default
     private List<String> mediaUrls = new ArrayList<>();
 
