@@ -221,36 +221,8 @@ public class PosSaleServiceImpl implements PosSaleService {
 
         PosSale savedSale = posSaleRepository.save(sale);
 
-        // Auto-création d'une écriture comptable en recette pour la vente POS
-        try {
-            String entryCode = "ECR-POS-" + savedSale.getReceiptNumber();
-            String clientName = savedSale.getClient() != null ? savedSale.getClient().getName() : (savedSale.getCustomClientName() != null ? savedSale.getCustomClientName() : "Client Comptant");
-
-            GestionPlat.example.demo.modules.billing.model.PaymentMethod billingPm = GestionPlat.example.demo.modules.billing.model.PaymentMethod.ESPECES;
-            if (paymentMethod != null) {
-                try {
-                    billingPm = GestionPlat.example.demo.modules.billing.model.PaymentMethod.valueOf(paymentMethod.name());
-                } catch (Exception e) {
-                    billingPm = GestionPlat.example.demo.modules.billing.model.PaymentMethod.ESPECES;
-                }
-            }
-
-            AccountingEntry entry = AccountingEntry.builder()
-                    .entryCode(entryCode)
-                    .entryDate(LocalDateTime.now())
-                    .type(EntryType.RECETTE)
-                    .category(AccountingCategory.VENTES_PLATS)
-                    .amount(savedSale.getNetAmount())
-                    .paymentMethod(billingPm)
-                    .description("Vente POS N° " + savedSale.getReceiptNumber() + " (" + boutique.getName() + " - " + clientName + ")")
-                    .sourceCashSession(session)
-                    .tiers(savedSale.getClient())
-                    .build();
-            accountingEntryRepository.save(entry);
-            log.info("Écriture comptable générée pour la vente POS {}", savedSale.getReceiptNumber());
-        } catch (Exception e) {
-            log.error("Erreur lors de la création de l'écriture comptable pour la vente POS", e);
-        }
+        // Les ventes POS alimentent la session de caisse locale (CashSession).
+        // L'entrée dans la Trésorerie Globale (Caisse Principale) se fait lors du versement des fonds.
 
         // Update Cash Session totals
         updateCashSessionTotals(session, paymentMethod, netAmount);

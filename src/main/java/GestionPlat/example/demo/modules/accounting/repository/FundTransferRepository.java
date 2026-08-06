@@ -21,4 +21,16 @@ public interface FundTransferRepository extends JpaRepository<FundTransfer, Long
 
     @Query("SELECT COALESCE(SUM(ft.amount), 0) FROM FundTransfer ft WHERE ft.boutique.id = :boutiqueId AND ft.status = :status")
     BigDecimal sumAmountByBoutiqueIdAndStatus(@Param("boutiqueId") Long boutiqueId, @Param("status") FundTransferStatus status);
+
+    @Query("SELECT COALESCE(SUM(ft.amount), 0) FROM FundTransfer ft WHERE ft.cashSession.id = :sessionId AND ft.status != 'REJECTED' AND ft.status != 'CANCELLED'")
+    BigDecimal sumAmountByCashSessionId(@Param("sessionId") Long sessionId);
+
+    @Query("SELECT COALESCE(SUM(ft.amount), 0) FROM FundTransfer ft WHERE ft.status = :status")
+    BigDecimal sumAmountByStatus(@Param("status") FundTransferStatus status);
+
+    @Query("SELECT COALESCE(SUM(ft.amount), 0) FROM FundTransfer ft WHERE ft.boutique.id = :boutiqueId AND ft.status != 'REJECTED' AND ft.status != 'CANCELLED'")
+    BigDecimal sumTransferredAmountByBoutiqueId(@Param("boutiqueId") Long boutiqueId);
+
+    @Query("SELECT COALESCE(SUM(ft.amount), 0) FROM FundTransfer ft WHERE ft.status != 'REJECTED' AND ft.status != 'CANCELLED'")
+    BigDecimal sumAllTransferredAmount();
 }

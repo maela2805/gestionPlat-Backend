@@ -70,6 +70,10 @@ public class CashSession {
     @Builder.Default
     private BigDecimal totalSalesOther = BigDecimal.ZERO;
 
+    @Column(name = "total_transferred_amount")
+    @Builder.Default
+    private BigDecimal totalTransferredAmount = BigDecimal.ZERO;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default

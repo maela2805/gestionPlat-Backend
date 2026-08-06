@@ -32,6 +32,19 @@ public class FundTransfer {
     @JoinColumn(name = "boutique_id", nullable = false)
     private Boutique boutique;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cash_session_id")
+    private GestionPlat.example.demo.modules.caisse.model.CashSession cashSession;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "versement_type", nullable = false)
+    @Builder.Default
+    private VersementType versemenType = VersementType.VERSEMENT_RECETTE;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "invoice_id")
+    private GestionPlat.example.demo.modules.billing.model.Invoice invoice;
+
     @Column(nullable = false)
     private BigDecimal amount;
 

@@ -17,6 +17,9 @@ import java.math.BigDecimal;
 public class CreateFundTransferRequest {
 
     private Long boutiqueId;
+    private Long cashSessionId;
+    private GestionPlat.example.demo.modules.accounting.model.VersementType versemenType;
+    private Long invoiceId;
 
     @NotNull(message = "Le montant est obligatoire")
     @DecimalMin(value = "0.01", message = "Le montant doit être supérieur à 0")

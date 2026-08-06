@@ -24,6 +24,9 @@ import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.*;
 
+import GestionPlat.example.demo.modules.accounting.model.FundTransferStatus;
+import GestionPlat.example.demo.modules.accounting.repository.FundTransferRepository;
+
 @Service
 @RequiredArgsConstructor
 public class AccountingServiceImpl implements AccountingService {
@@ -31,6 +34,7 @@ public class AccountingServiceImpl implements AccountingService {
     private final AccountingEntryRepository accountingEntryRepository;
     private final InvoiceRepository invoiceRepository;
     private final TiersRepository tiersRepository;
+    private final FundTransferRepository fundTransferRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -145,6 +149,9 @@ public class AccountingServiceImpl implements AccountingService {
         BigDecimal clientReceivables = invoiceRepository.sumRemainingAmountByType(InvoiceType.VENTE);
         if (clientReceivables == null) clientReceivables = BigDecimal.ZERO;
 
+        BigDecimal boutiqueReceivables = invoiceRepository.sumGlobalRemainingAmount();
+        if (boutiqueReceivables == null) boutiqueReceivables = BigDecimal.ZERO;
+
         BigDecimal supplierPayables = invoiceRepository.sumRemainingAmountByType(InvoiceType.ACHAT);
         if (supplierPayables == null) supplierPayables = BigDecimal.ZERO;
 
@@ -153,6 +160,12 @@ public class AccountingServiceImpl implements AccountingService {
 
         BigDecimal allDepenses = accountingEntryRepository.sumAmountByType(EntryType.DEPENSE);
         if (allDepenses == null) allDepenses = BigDecimal.ZERO;
+
+        BigDecimal totalApprovedTransfers = fundTransferRepository.sumAmountByStatus(FundTransferStatus.APPROVED);
+        if (totalApprovedTransfers == null) totalApprovedTransfers = BigDecimal.ZERO;
+
+        BigDecimal centralCashBalance = totalApprovedTransfers.subtract(allDepenses);
+        if (centralCashBalance.compareTo(BigDecimal.ZERO) < 0) centralCashBalance = BigDecimal.ZERO;
 
         BigDecimal cashBalance = allRecettes.subtract(allDepenses);
 
@@ -169,8 +182,10 @@ public class AccountingServiceImpl implements AccountingService {
                 .totalExpense(totalExpense)
                 .netProfit(netProfit)
                 .clientReceivables(clientReceivables)
+                .boutiqueReceivables(boutiqueReceivables)
                 .supplierPayables(supplierPayables)
                 .cashBalance(cashBalance)
+                .centralCashBalance(centralCashBalance)
                 .expensesByCategory(expensesByCategory)
                 .build();
     }

@@ -75,6 +75,18 @@ public class DataInitializer implements CommandLineRunner {
                         .description("Client externe - Boutique et commandes en ligne")
                         .build()));
 
+        roleRepository.findByName("ROLE_CAISSIER")
+                .orElseGet(() -> roleRepository.save(Role.builder()
+                        .name("ROLE_CAISSIER")
+                        .description("Caissier - Gestion Ventes, Caisses & Comptabilité")
+                        .build()));
+
+        roleRepository.findByName("ROLE_VENDEUR")
+                .orElseGet(() -> roleRepository.save(Role.builder()
+                        .name("ROLE_VENDEUR")
+                        .description("Vendeur POS - Saisie rapide des ventes")
+                        .build()));
+
         // Create or update default Super Admin: admin@gesten.com / passer
         createOrUpdateAdmin("admin@gesten.com", "passer", "Mael", "Koutoglo", superAdminRole);
         

@@ -31,6 +31,8 @@ public class CashSessionDTO {
     private BigDecimal totalSalesMobileMoney;
     private BigDecimal totalSalesCard;
     private BigDecimal totalSalesOther;
+    private BigDecimal totalTransferredAmount;
+    private BigDecimal remainingToTransfer;
     private BigDecimal totalCashIn;
     private BigDecimal totalCashOut;
     private CashSessionStatus status;

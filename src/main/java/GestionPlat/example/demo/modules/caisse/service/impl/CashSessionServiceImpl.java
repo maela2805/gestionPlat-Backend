@@ -27,6 +27,7 @@ public class CashSessionServiceImpl implements CashSessionService {
     private final CashSessionRepository cashSessionRepository;
     private final CashMovementRepository cashMovementRepository;
     private final BoutiqueRepository boutiqueRepository;
+    private final GestionPlat.example.demo.modules.accounting.repository.FundTransferRepository fundTransferRepository;
 
     @Override
     @Transactional
@@ -203,6 +204,16 @@ public class CashSessionServiceImpl implements CashSessionService {
                 .map(CashMovement::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        BigDecimal totalTransferred = fundTransferRepository.sumAmountByCashSessionId(session.getId());
+        if (totalTransferred == null) totalTransferred = BigDecimal.ZERO;
+
+        BigDecimal targetAmount = session.getClosingBalanceReal() != null ? session.getClosingBalanceReal() : session.getClosingBalanceExpected();
+        if (targetAmount == null || targetAmount.compareTo(BigDecimal.ZERO) == 0) {
+            targetAmount = session.getTotalSalesCash();
+        }
+        BigDecimal remaining = targetAmount.subtract(totalTransferred);
+        if (remaining.compareTo(BigDecimal.ZERO) < 0) remaining = BigDecimal.ZERO;
+
         return CashSessionDTO.builder()
                 .id(session.getId())
                 .sessionReference(session.getSessionReference())
@@ -220,6 +231,8 @@ public class CashSessionServiceImpl implements CashSessionService {
                 .totalSalesMobileMoney(session.getTotalSalesMobileMoney())
                 .totalSalesCard(session.getTotalSalesCard())
                 .totalSalesOther(session.getTotalSalesOther())
+                .totalTransferredAmount(totalTransferred)
+                .remainingToTransfer(remaining)
                 .totalCashIn(totalCashIn)
                 .totalCashOut(totalCashOut)
                 .status(session.getStatus())

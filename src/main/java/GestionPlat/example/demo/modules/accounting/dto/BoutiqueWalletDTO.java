@@ -18,4 +18,5 @@ public class BoutiqueWalletDTO {
     private BigDecimal totalPaidAmount;            // Somme versements validés (APPROVED)
     private BigDecimal balanceDue;                 // Solde restant dû au dépôt = Factures - Payé
     private BigDecimal pendingTransfersAmount;     // Somme versements en attente de validation (PENDING)
+    private BigDecimal availableCashBalance;       // Solde disponible en caisse globale boutique = Ventes espèces - Versements effectués
 }

@@ -53,14 +53,40 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("Cet email est déjà utilisé !");
         }
 
-        Role role = roleRepository.findByName(request.getRoleName())
-                .orElseGet(() -> roleRepository.findByName("ROLE_EMPLOYEE")
-                        .orElseThrow(() -> new RuntimeException("Rôle introuvable: " + request.getRoleName())));
-
         Boutique boutique = null;
         if (request.getBoutiqueId() != null) {
             boutique = boutiqueRepository.findById(request.getBoutiqueId()).orElse(null);
         }
+
+        // Vérification de sécurité pour les créateurs non-administrateurs
+        org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null) {
+            String currentEmail = auth.getName();
+            User currentUser = userRepository.findByEmail(currentEmail).orElse(null);
+            if (currentUser != null && currentUser.getRole() != null) {
+                String currentRoleName = currentUser.getRole().getName();
+                boolean isAdmin = "ROLE_SUPER_ADMIN".equals(currentRoleName) || "ROLE_ADMIN".equals(currentRoleName);
+                if (!isAdmin) {
+                    // Les employés/gérants de boutique ne peuvent créer QUE des Vendeurs ou Caissiers
+                    if (!"ROLE_VENDEUR".equals(request.getRoleName()) && !"ROLE_CAISSIER".equals(request.getRoleName()) && !"ROLE_EMPLOYEE".equals(request.getRoleName())) {
+                        throw new IllegalArgumentException("En tant que responsable de boutique, vous ne pouvez créer que des comptes Vendeur ou Caissier.");
+                    }
+                    // Forcer l'association à la boutique du créateur
+                    if (currentUser.getBoutique() != null) {
+                        boutique = currentUser.getBoutique();
+                    }
+                }
+            }
+        }
+
+        String targetRoleName = (request.getRoleName() != null && !request.getRoleName().isBlank())
+                ? request.getRoleName() : "ROLE_EMPLOYEE";
+
+        Role role = roleRepository.findByName(targetRoleName)
+                .orElseGet(() -> roleRepository.save(Role.builder()
+                        .name(targetRoleName)
+                        .description(targetRoleName)
+                        .build()));
 
         User user = User.builder()
                 .email(request.getEmail())
@@ -93,8 +119,12 @@ public class UserServiceImpl implements UserService {
         }
 
         if (request.getRoleName() != null && !request.getRoleName().isBlank()) {
-            Role role = roleRepository.findByName(request.getRoleName())
-                    .orElseThrow(() -> new RuntimeException("Rôle introuvable: " + request.getRoleName()));
+            String updateRoleName = request.getRoleName();
+            Role role = roleRepository.findByName(updateRoleName)
+                    .orElseGet(() -> roleRepository.save(Role.builder()
+                            .name(updateRoleName)
+                            .description(updateRoleName)
+                            .build()));
             user.setRole(role);
         }
 

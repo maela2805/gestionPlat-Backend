@@ -49,6 +49,18 @@ public class TiersServiceImpl implements TiersService {
     @Override
     @Transactional
     public TiersDTO createTiers(CreateTiersRequest request) {
+        // Seuls les Administrateurs généraux (Super Admin / Admin Dépôt) peuvent créer ou gérer un Fournisseur
+        if (request.getType() == TiersType.FOURNISSEUR) {
+            org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null) {
+                boolean isAdmin = auth.getAuthorities().stream()
+                        .anyMatch(a -> a.getAuthority().equals("ROLE_SUPER_ADMIN") || a.getAuthority().equals("ROLE_ADMIN"));
+                if (!isAdmin) {
+                    throw new IllegalArgumentException("Seuls les Administrateurs généraux (Super Admin / Admin Dépôt) sont autorisés à créer ou enregistrer un Fournisseur.");
+                }
+            }
+        }
+
         String code = request.getCode();
         if (code == null || code.isBlank()) {
             String prefix = switch (request.getType()) {
@@ -85,6 +97,17 @@ public class TiersServiceImpl implements TiersService {
     public TiersDTO updateTiers(Long id, UpdateTiersRequest request) {
         Tiers tiers = tiersRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Tiers introuvable avec l'ID : " + id));
+
+        if (request.getType() == TiersType.FOURNISSEUR) {
+            org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null) {
+                boolean isAdmin = auth.getAuthorities().stream()
+                        .anyMatch(a -> a.getAuthority().equals("ROLE_SUPER_ADMIN") || a.getAuthority().equals("ROLE_ADMIN"));
+                if (!isAdmin) {
+                    throw new IllegalArgumentException("Seuls les Administrateurs généraux (Super Admin / Admin Dépôt) sont autorisés à modifier un Fournisseur.");
+                }
+            }
+        }
 
         tiers.setName(request.getName());
         tiers.setType(request.getType());

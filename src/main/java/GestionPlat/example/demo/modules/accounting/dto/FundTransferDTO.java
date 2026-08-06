@@ -19,6 +19,12 @@ public class FundTransferDTO {
     private String reference;
     private Long boutiqueId;
     private String boutiqueName;
+    private Long cashSessionId;
+    private GestionPlat.example.demo.modules.accounting.model.VersementType versemenType;
+    private Long invoiceId;
+    private String invoiceNumber;
+    private BigDecimal invoiceTotalAmount;
+    private BigDecimal invoiceRemainingAmount;
     private BigDecimal amount;
     private PaymentMethod paymentMethod;
     private String proofUrl;

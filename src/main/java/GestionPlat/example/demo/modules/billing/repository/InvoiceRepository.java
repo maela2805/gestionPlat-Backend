@@ -41,7 +41,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     @Query(value = "SELECT COALESCE(SUM(i.total_ttc), 0) FROM invoices i LEFT JOIN boutique_orders bo ON bo.id = i.source_boutique_order_id WHERE (i.boutique_id = :boutiqueId OR bo.boutique_id = :boutiqueId) AND (i.type IS NULL OR i.type != 'ACHAT')", nativeQuery = true)
     BigDecimal sumCessionInvoicesTotalTtcByBoutiqueId(@Param("boutiqueId") Long boutiqueId);
 
-    @Query(value = "SELECT i.* FROM invoices i LEFT JOIN boutique_orders bo ON bo.id = i.source_boutique_order_id WHERE (i.boutique_id = :boutiqueId OR bo.boutique_id = :boutiqueId) AND (i.type IS NULL OR i.type != 'ACHAT') AND i.remaining_amount > 0 ORDER BY i.invoice_date ASC", nativeQuery = true)
+    @Query("SELECT i FROM Invoice i LEFT JOIN i.sourceBoutiqueOrder bo WHERE (i.boutique.id = :boutiqueId OR bo.boutique.id = :boutiqueId) AND (i.type IS NULL OR i.type != GestionPlat.example.demo.modules.billing.model.InvoiceType.ACHAT) AND (i.remainingAmount IS NULL OR i.remainingAmount > 0) ORDER BY i.invoiceDate ASC")
     List<Invoice> findUnpaidCessionInvoicesByBoutiqueId(@Param("boutiqueId") Long boutiqueId);
 
     @Query(value = "SELECT COALESCE(SUM(i.remaining_amount), 0) FROM invoices i LEFT JOIN boutique_orders bo ON bo.id = i.source_boutique_order_id WHERE (i.boutique_id = :boutiqueId OR bo.boutique_id = :boutiqueId) AND (i.type IS NULL OR i.type != 'ACHAT')", nativeQuery = true)
@@ -49,4 +49,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
 
     @Query(value = "SELECT COALESCE(SUM(remaining_amount), 0) FROM invoices WHERE (type IS NULL OR type != 'ACHAT')", nativeQuery = true)
     BigDecimal sumGlobalRemainingAmount();
+
+    @Query(value = "SELECT COALESCE(SUM(i.total_ttc), 0) FROM invoices i WHERE (i.type IS NULL OR i.type != 'ACHAT')", nativeQuery = true)
+    BigDecimal sumAllCessionInvoicesTotalTtc();
 }

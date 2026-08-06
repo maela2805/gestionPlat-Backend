@@ -16,8 +16,10 @@ public class FinancialSummaryDTO {
     private BigDecimal totalRevenue; // Total Recettes / Chiffre d'Affaires
     private BigDecimal totalExpense; // Total Dépenses / Charges
     private BigDecimal netProfit;    // Résultat Net (Bénéfice / Perte)
-    private BigDecimal clientReceivables; // Créances clients (Factures ventes non payées)
+    private BigDecimal clientReceivables; // Créances clients externes
+    private BigDecimal boutiqueReceivables; // Créances & Dettes des boutiques (Factures cessions non réglées)
     private BigDecimal supplierPayables;   // Dettes fournisseurs (Factures achats non payées)
-    private BigDecimal cashBalance;        // Solde Trésorerie
+    private BigDecimal cashBalance;        // Solde Trésorerie global
+    private BigDecimal centralCashBalance; // Trésorerie Centrale disponible (Versements validés - Dépenses)
     private Map<String, BigDecimal> expensesByCategory; // Ventilation des dépenses
 }

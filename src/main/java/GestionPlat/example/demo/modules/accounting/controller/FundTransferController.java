@@ -72,6 +72,12 @@ public class FundTransferController {
         return ResponseEntity.ok(fundTransferService.cancelFundTransfer(id, userDetails.getUsername()));
     }
 
+    @GetMapping("/wallet")
+    @PreAuthorize("permitAll()")
+    public ResponseEntity<BoutiqueWalletDTO> getGlobalWalletSummary() {
+        return ResponseEntity.ok(fundTransferService.getBoutiqueWalletSummary(null));
+    }
+
     @GetMapping("/wallet/{boutiqueId}")
     @PreAuthorize("permitAll()")
     public ResponseEntity<BoutiqueWalletDTO> getBoutiqueWalletSummary(@PathVariable Long boutiqueId) {
