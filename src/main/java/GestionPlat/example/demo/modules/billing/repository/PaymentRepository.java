@@ -16,5 +16,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     List<Payment> findByTiersId(Long tiersId);
 
+    boolean existsByReference(String reference);
+
     boolean existsByPaymentNumber(String paymentNumber);
 }

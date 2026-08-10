@@ -37,7 +37,7 @@ public class FundTransfer {
     private GestionPlat.example.demo.modules.caisse.model.CashSession cashSession;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "versement_type", nullable = false)
+    @Column(name = "versement_type", nullable = false, columnDefinition = "VARCHAR(50) DEFAULT 'VERSEMENT_RECETTE'")
     @Builder.Default
     private VersementType versemenType = VersementType.VERSEMENT_RECETTE;
 

@@ -65,31 +65,8 @@ public class FundTransferServiceImpl implements FundTransferService {
         Boutique boutique = boutiqueRepository.findById(targetBoutiqueId)
                 .orElseThrow(() -> new RuntimeException("Boutique introuvable"));
 
-        // Contrôle du solde disponible en caisse globale boutique
-        BigDecimal totalCashSales = posSaleRepository.sumCashSalesByBoutiqueId(boutique.getId());
-        BigDecimal totalTransferred = fundTransferRepository.sumTransferredAmountByBoutiqueId(boutique.getId());
-        BigDecimal soldeCaisseBoutique = totalCashSales.subtract(totalTransferred);
-        if (soldeCaisseBoutique.compareTo(BigDecimal.ZERO) < 0) soldeCaisseBoutique = BigDecimal.ZERO;
-
         if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Veuillez saisir un montant de versement valide.");
-        }
-
-        if (request.getAmount().compareTo(soldeCaisseBoutique) > 0) {
-            throw new IllegalArgumentException("Impossible d'effectuer un versement de " 
-                    + String.format("%,.0f", request.getAmount()) + " FCFA. Le solde disponible dans la caisse globale de la boutique est seulement de " 
-                    + String.format("%,.0f", soldeCaisseBoutique) + " FCFA.");
-        }
-
-        String reference = "TRF-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
-                + "-" + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
-
-        GestionPlat.example.demo.modules.caisse.model.CashSession cashSession = null;
-        if (request.getCashSessionId() != null) {
-            cashSession = cashSessionRepository.findById(request.getCashSessionId()).orElse(null);
-        }
-        if (cashSession == null) {
-            cashSession = cashSessionRepository.findByBoutiqueIdAndStatus(boutique.getId(), GestionPlat.example.demo.modules.caisse.model.CashSessionStatus.OPEN).orElse(null);
         }
 
         VersementType versemenType = request.getVersemenType() != null 
@@ -103,6 +80,36 @@ public class FundTransferServiceImpl implements FundTransferService {
             }
         }
 
+        // Contrôle du solde disponible en caisse globale boutique (seulement pour VERSEMENT_RECETTE)
+        if (versemenType == VersementType.VERSEMENT_RECETTE) {
+            BigDecimal totalCashSales = posSaleRepository.sumCashSalesByBoutiqueId(boutique.getId());
+            if (totalCashSales == null) totalCashSales = BigDecimal.ZERO;
+            BigDecimal totalTransferred = fundTransferRepository.sumAmountByBoutiqueIdAndStatus(boutique.getId(), FundTransferStatus.APPROVED);
+            if (totalTransferred == null) totalTransferred = BigDecimal.ZERO;
+            BigDecimal soldeCaisseBoutique = totalCashSales.subtract(totalTransferred);
+            if (soldeCaisseBoutique.compareTo(BigDecimal.ZERO) < 0) soldeCaisseBoutique = BigDecimal.ZERO;
+
+            if (soldeCaisseBoutique.compareTo(BigDecimal.ZERO) > 0 && request.getAmount().compareTo(soldeCaisseBoutique) > 0) {
+                throw new IllegalArgumentException("Impossible d'effectuer un versement de " 
+                        + String.format("%,.0f", request.getAmount()) + " FCFA. Le solde disponible dans la caisse globale de la boutique est seulement de " 
+                        + String.format("%,.0f", soldeCaisseBoutique) + " FCFA.");
+            }
+        }
+
+        String reference = "TRF-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
+                + "-" + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+
+        GestionPlat.example.demo.modules.caisse.model.CashSession cashSession = null;
+        if (request.getCashSessionId() != null) {
+            cashSession = cashSessionRepository.findById(request.getCashSessionId()).orElse(null);
+        }
+        if (cashSession == null) {
+            cashSession = cashSessionRepository.findByBoutiqueIdAndStatus(boutique.getId(), GestionPlat.example.demo.modules.caisse.model.CashSessionStatus.OPEN).orElse(null);
+        }
+
+        // Tous les versements de fonds boutique/dépôt nécessitent une validation administrative (PENDING)
+        FundTransferStatus initialStatus = FundTransferStatus.PENDING;
+
         FundTransfer transfer = FundTransfer.builder()
                 .reference(reference)
                 .boutique(boutique)
@@ -114,7 +121,8 @@ public class FundTransferServiceImpl implements FundTransferService {
                 .proofUrl(request.getProofUrl())
                 .notes(request.getNotes())
                 .userEmail(userEmail)
-                .status(FundTransferStatus.PENDING)
+                .status(initialStatus)
+                .approvedByEmail(null)
                 .build();
 
         FundTransfer saved = fundTransferRepository.save(transfer);
@@ -125,7 +133,7 @@ public class FundTransferServiceImpl implements FundTransferService {
             cashSessionRepository.save(cashSession);
         }
 
-        log.info("Versement de fonds créé avec succès ref: {} pour boutique: {}", reference, boutique.getName());
+        log.info("Versement de fonds créé avec succès ref: {} (status: {}) pour boutique: {}", reference, initialStatus, boutique.getName());
         return mapToDTO(saved);
     }
 
@@ -323,13 +331,27 @@ public class FundTransferServiceImpl implements FundTransferService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public BoutiqueWalletDTO getBoutiqueWalletSummary(Long boutiqueId) {
+        // Réparation automatique : Réinitialiser à PENDING tout versement indûment passé à APPROVED sans imputation de paiement
+        List<FundTransfer> unallocatedTransfers = fundTransferRepository.findAll().stream()
+                .filter(t -> t.getStatus() == FundTransferStatus.APPROVED 
+                        && t.getReference() != null 
+                        && !paymentRepository.existsByReference(t.getReference()))
+                .collect(Collectors.toList());
+        if (!unallocatedTransfers.isEmpty()) {
+            for (FundTransfer ut : unallocatedTransfers) {
+                ut.setStatus(FundTransferStatus.PENDING);
+                ut.setApprovedByEmail(null);
+                fundTransferRepository.save(ut);
+                log.info("Versement {} réinitialisé à PENDING pour validation comptable/admin.", ut.getReference());
+            }
+        }
         if (boutiqueId == null) {
             BigDecimal totalCession = invoiceRepository.sumAllCessionInvoicesTotalTtc();
             if (totalCession == null) totalCession = BigDecimal.ZERO;
 
-            BigDecimal totalPaid = fundTransferRepository.sumAmountByStatus(FundTransferStatus.APPROVED);
+            BigDecimal totalPaid = fundTransferRepository.sumAllDepotTransfers();
             if (totalPaid == null) totalPaid = BigDecimal.ZERO;
 
             BigDecimal pendingTransfers = fundTransferRepository.sumAmountByStatus(FundTransferStatus.PENDING);
@@ -339,8 +361,13 @@ public class FundTransferServiceImpl implements FundTransferService {
             if (balanceDue.compareTo(BigDecimal.ZERO) < 0) balanceDue = BigDecimal.ZERO;
 
             BigDecimal totalCashSales = posSaleRepository.sumAllCashSales();
-            BigDecimal totalTransferred = fundTransferRepository.sumAllTransferredAmount();
-            BigDecimal availableCash = totalCashSales.subtract(totalTransferred);
+            if (totalCashSales == null) totalCashSales = BigDecimal.ZERO;
+
+            BigDecimal posRecipeTransfers = fundTransferRepository.sumAllPosRecipeTransfers();
+            if (posRecipeTransfers == null) posRecipeTransfers = BigDecimal.ZERO;
+
+            BigDecimal totalBoutiqueCashIn = totalCashSales.max(posRecipeTransfers);
+            BigDecimal availableCash = totalBoutiqueCashIn.subtract(totalPaid);
             if (availableCash.compareTo(BigDecimal.ZERO) < 0) availableCash = BigDecimal.ZERO;
 
             return BoutiqueWalletDTO.builder()
@@ -360,7 +387,7 @@ public class FundTransferServiceImpl implements FundTransferService {
         BigDecimal totalCession = invoiceRepository.sumCessionInvoicesTotalTtcByBoutiqueId(boutiqueId);
         if (totalCession == null) totalCession = BigDecimal.ZERO;
 
-        BigDecimal totalPaid = fundTransferRepository.sumAmountByBoutiqueIdAndStatus(boutiqueId, FundTransferStatus.APPROVED);
+        BigDecimal totalPaid = fundTransferRepository.sumDepotTransfersByBoutiqueId(boutiqueId);
         if (totalPaid == null) totalPaid = BigDecimal.ZERO;
 
         BigDecimal pendingTransfers = fundTransferRepository.sumAmountByBoutiqueIdAndStatus(boutiqueId, FundTransferStatus.PENDING);
@@ -370,8 +397,13 @@ public class FundTransferServiceImpl implements FundTransferService {
         if (balanceDue.compareTo(BigDecimal.ZERO) < 0) balanceDue = BigDecimal.ZERO;
 
         BigDecimal totalCashSales = posSaleRepository.sumCashSalesByBoutiqueId(boutiqueId);
-        BigDecimal totalTransferred = fundTransferRepository.sumTransferredAmountByBoutiqueId(boutiqueId);
-        BigDecimal availableCash = totalCashSales.subtract(totalTransferred);
+        if (totalCashSales == null) totalCashSales = BigDecimal.ZERO;
+
+        BigDecimal posRecipeTransfers = fundTransferRepository.sumPosRecipeTransfersByBoutiqueId(boutiqueId);
+        if (posRecipeTransfers == null) posRecipeTransfers = BigDecimal.ZERO;
+
+        BigDecimal totalBoutiqueCashIn = totalCashSales.max(posRecipeTransfers);
+        BigDecimal availableCash = totalBoutiqueCashIn.subtract(totalPaid);
         if (availableCash.compareTo(BigDecimal.ZERO) < 0) availableCash = BigDecimal.ZERO;
 
         log.info("getBoutiqueWalletSummary for boutiqueId={}: totalCession={}, totalPaid={}, balanceDue={}, availableCash={}", boutiqueId, totalCession, totalPaid, balanceDue, availableCash);

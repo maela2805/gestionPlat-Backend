@@ -18,9 +18,9 @@ public interface PosSaleRepository extends JpaRepository<PosSale, Long> {
     Optional<PosSale> findByReceiptNumber(String receiptNumber);
     boolean existsByReceiptNumber(String receiptNumber);
 
-    @Query("SELECT COALESCE(SUM(s.netAmount), 0) FROM PosSale s WHERE s.boutique.id = :boutiqueId AND s.status != 'CANCELEE' AND s.paymentMethod = 'ESPECES'")
+    @Query("SELECT COALESCE(SUM(s.netAmount), 0) FROM PosSale s WHERE s.boutique.id = :boutiqueId AND s.status = GestionPlat.example.demo.modules.pos.model.PosSaleStatus.PAYEE AND s.paymentMethod = GestionPlat.example.demo.modules.pos.model.PaymentMethod.ESPECES")
     BigDecimal sumCashSalesByBoutiqueId(@Param("boutiqueId") Long boutiqueId);
 
-    @Query("SELECT COALESCE(SUM(s.netAmount), 0) FROM PosSale s WHERE s.status != 'CANCELEE' AND s.paymentMethod = 'ESPECES'")
+    @Query("SELECT COALESCE(SUM(s.netAmount), 0) FROM PosSale s WHERE s.status = GestionPlat.example.demo.modules.pos.model.PosSaleStatus.PAYEE AND s.paymentMethod = GestionPlat.example.demo.modules.pos.model.PaymentMethod.ESPECES")
     BigDecimal sumAllCashSales();
 }
